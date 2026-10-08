@@ -19,7 +19,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 15. [x] Complete attachments, reactions, replies, disappearing UI, responsive layouts, shortcuts.
 16. [x] Pixel polish and accessibility pass against specified tokens and layout.
 17. [x] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
-18. [ ] Finalize Render/Vercel config and write beginner deployment guide.
+18. [x] Finalize Render/Vercel config and write beginner deployment guide.
 19. [ ] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
 20. [ ] Add plain-language module explanations and 15 interview questions/answers.
 21. [ ] Final lint, typecheck, backend tests, frontend build, smoke checks; remove dead code and record each verification truthfully.
@@ -44,5 +44,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 16: applied the requested token palette, 340–380px conversation pane, bubble geometry/metadata, hover reactions, thin scrollbars, visible keyboard focus, reduced-motion support, responsive breakpoints, meaningful time labels, original SVG chat mark, and modal focus trapping. Added Prettier and CI format checking. `npm run format:check`, lint, typecheck, build, and backend 17-test suite passed.
 - Clean-install follow-up: the first `npm ci` found an omitted transitive `@types/prop-types` lock entry. Regenerated the lockfile; a subsequent clean `npm ci` succeeded, and format check, lint, strict typecheck, and production build all passed afterward.
 - Item 17: `backend/scripts/smoke_e2e.py` passed against the existing database for both demo users: direct conversation, group creation, admin denial, typing start/stop, both-way WebSocket messages, acknowledgement, delivered/read status. Restarted the backend against the same `signal.db`; the script's `--verify-conversation/--verify-message/--verify-group` mode confirmed saved rows survived. This live run exposed and fixed the legacy SQLite receipt timestamp constraint. Final backend suite: 18 passed.
+- Item 18: Render Blueprint now uses the Docker FastAPI service, `/health`, persistent `/data` disk, SQLite URL, generated JWT secret, persisted uploads, OTP config, and editable CORS origin. Vercel config lives under the frontend project root. `DEPLOY.md` gives click-by-click GitHub, Render, Vercel, variables, and verification steps. YAML and Vercel JSON parse checks passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.

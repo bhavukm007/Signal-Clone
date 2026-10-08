@@ -3,6 +3,7 @@ services:
     name: signal-clone-api
     runtime: docker
     rootDir: backend
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         value: sqlite:////data/signal.db
@@ -10,6 +11,10 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://your-app.vercel.app
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: OTP_CODE
+        value: '123456'
     disk:
       name: signal-data
       mountPath: /data
