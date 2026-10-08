@@ -75,6 +75,8 @@ origins=os.getenv('CORS_ORIGINS','http://localhost:3000').split(',')
 app.add_middleware(CORSMiddleware,allow_origins=origins,allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
 @app.on_event('startup')
 def startup():
+    if os.getenv('TESTING') == '1':
+        return
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         if not db.scalar(select(User).limit(1)): seed(db)
