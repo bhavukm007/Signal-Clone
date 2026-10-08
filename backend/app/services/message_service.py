@@ -8,6 +8,7 @@ from app.models.message import Message, Reaction, Receipt
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
 from app.schemas.message import MessageCreate
+from app.schemas.user import UserOut
 
 
 def create_message(db: Session, conversation_id: str, sender: User, body: MessageCreate) -> Message:
@@ -151,13 +152,13 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'id': message.id,
         'conversation_id': message.conversation_id,
         'sender_id': message.sender_id,
-        'sender': sender,
+        'sender': UserOut.model_validate(sender).model_dump(mode='json'),
         'body': message.body,
         'type': message.type,
         'client_message_id': message.client_message_id,
-        'created_at': message.created_at,
-        'edited_at': message.edited_at,
-        'deleted_at': message.deleted_at,
+        'created_at': message.created_at.isoformat(),
+        'edited_at': message.edited_at.isoformat() if message.edited_at else None,
+        'deleted_at': message.deleted_at.isoformat() if message.deleted_at else None,
         'reply_to_id': message.reply_to_id,
         'status': aggregate_status(db, message.id),
     }

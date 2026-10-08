@@ -9,7 +9,7 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 | Backend layering | `api/v1`, `services`, `repositories`, `models`, `schemas`, `core`, `db`, and `ws` modules exist; route handlers delegate logic; consistent validation/HTTP error envelope | Complete websocket events/manager and auth session dependency; add upload/purge semantics |
 | Database | All ten requested tables now exist with foreign keys, SQLite FK/WAL pragmas, unique/check constraints, read cursor, group fields, message metadata, receipts, reactions, attachments | Add regression tests for constraints/indexes and richer seed behaviors |
 | Authentication | Opaque random tokens are stored as SHA-256 hashes with 30-day expiry; logout and expired sessions are revoked; REST and WebSocket share token validation | Add device/session management only if required; core requested behavior is covered |
-| Messages/receipts | REST send is idempotent; receipt rows and read cursor schema exist; message status serialization is present | Delivery-on-connect, read/delivered events, aggregate checks, WS message send/typing/presence/reactions |
+| Messages/receipts | Idempotent REST/WS send; client ack; per-recipient sent/delivered/read; all-recipient aggregate; online delivery on connect; cursor read; typing throttle; first/last socket presence and reconnect delivery are covered by tests | Group-wide aggregate edge cases and reaction broadcast tests remain in group/realtime validation |
 | Groups | Group creation, member listing/add/remove/role editing API and admin checks live in services | System messages, conversation broadcasts, UI, and broader role tests |
 | Uploads | Route placeholder only; attachment schema exists | Validated storage, serving, metadata creation, avatar/attachment client flows |
 | Disappearing messages | Schema and timer patch path exist | Cancellable purge task and deleted events; fully exercise timer lifecycle |
@@ -21,4 +21,5 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 
 - `TestClient` uses an AnyIO Windows loopback socketpair internally; under the restricted shell it blocks before the app request executes. Running the in-process suite via the reviewed escalation path passes; the test code itself performs no external network requests.
 - npm registry access required the reviewed escalation path after the sandbox returned `ENOTFOUND`; a lockfile is now present and reproducible `npm ci` succeeded.
+
 

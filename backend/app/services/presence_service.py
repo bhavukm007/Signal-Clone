@@ -1,6 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.db.base import utc_now
+from app.models.contact import Contact
+from app.models.conversation import Participant
 from app.models.user import User
 
 
@@ -16,8 +19,14 @@ def set_online(db: Session, user_id: str, online: bool) -> User | None:
 
 
 def relevant_user_ids(db: Session, user_id: str) -> set[str]:
-    from app.models.conversation import Participant
-    conversation_ids = select(Participant.conversation_id).where(Participant.user_id == user_id)
-    return set(db.scalars(select(Participant.user_id).where(
-        Participant.conversation_id.in_(conversation_ids), Participant.user_id != user_id,
+    conversation_ids = select(Participant.conversation_id).where(
+        Participant.user_id == user_id, Participant.left_at.is_(None)
+    )
+    shared = set(db.scalars(select(Participant.user_id).where(
+        Participant.conversation_id.in_(conversation_ids),
+        Participant.user_id != user_id,
+        Participant.left_at.is_(None),
     )).all())
+    inbound = set(db.scalars(select(Contact.owner_id).where(Contact.contact_user_id == user_id)).all())
+    outbound = set(db.scalars(select(Contact.contact_user_id).where(Contact.owner_id == user_id)).all())
+    return shared | inbound | outbound

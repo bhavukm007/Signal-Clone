@@ -14,3 +14,9 @@ def latest_otp(db: Session, identifier: str) -> OtpChallenge | None:
 
 def sessions_for_token(db: Session, token_hash: str) -> AuthSession | None:
     return db.scalar(select(AuthSession).where(AuthSession.token_hash == token_hash))
+
+
+def create_session(db: Session, session: AuthSession) -> AuthSession:
+    db.add(session)
+    db.flush()
+    return session

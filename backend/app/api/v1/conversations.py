@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.conversation import ConversationPatch, DirectCreate
 from app.schemas.message import ReadUpTo
 from app.services import conversation_service
+from app.services import message_service, realtime_service
 
 router = APIRouter(prefix='/conversations', tags=['conversations'])
 
@@ -40,14 +41,14 @@ def details(
 
 
 @router.post('/{conversation_id}/read')
-def mark_read(
+async def mark_read(
     conversation_id: str,
     body: ReadUpTo,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    from app.services.message_service import mark_read as mark_message_read
-    receipts = mark_message_read(db, user, conversation_id, body.up_to_message_id)
+    receipts = message_service.mark_read(db, user, conversation_id, body.up_to_message_id)
+    await realtime_service.publish_receipts(db, receipts)
     return {'ok': True, 'updated_receipt_count': len(receipts)}
 
 

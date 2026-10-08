@@ -5,7 +5,7 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 1. [x] Make backend tests runnable and green using in-memory SQLite, TESTING lifespan gate, `pytest-timeout`, and TestClient REST/WebSocket; install frontend dependencies and pass lint/typecheck/build.
 2. [x] Refactor backend into API → services → repositories → models; add all specified tables, schemas, constraints, indexes, and consistent errors.
 3. [x] Implement durable hashed auth sessions with expiry and revocation, enforced on REST and WebSocket.
-4. [ ] Implement sent/delivered/read receipts, group aggregation, online/last-seen presence, typing, and WebSocket tests.
+4. [x] Implement sent/delivered/read receipts, group aggregation, online/last-seen presence, typing, and WebSocket tests.
 5. [ ] Complete groups with server-side admin rules, system messages, broadcasts, and tests.
 6. [ ] Implement validated avatar and attachment uploads.
 7. [ ] Implement expiring messages, cancellable purger, deletion broadcast, and tests.
@@ -27,7 +27,8 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 ## Verification log
 
 - Item 1: `python -m pytest -x -q` → 6 passed, including an in-process TestClient WebSocket ping; `npm ci --no-audit --no-fund --prefer-offline`, `npm run lint`, `npm run typecheck`, and `npm run build` all exited 0. React Hook warnings remain and are tracked for the frontend refactor.
-- Item 2: `python -m compileall -q app tests` passed; `python -m pytest -x -q` → 6 passed after modularization; `app.openapi()` registered 24 HTTP routes before the final ping route was added. All expected table names are asserted by a test.`n- Item 3: `python -m pytest -x -q` → 9 passed, including token hash-at-rest, 30-day expiry, REST logout/expiry rejection, and revoked WebSocket rejection.
+- Item 2: `python -m compileall -q app tests` passed; `python -m pytest -x -q` → 6 passed after modularization; `app.openapi()` registered 24 HTTP routes before the final ping route was added. All expected table names are asserted by a test.`n- Item 3: `python -m pytest -x -q` → 9 passed, including token hash-at-rest, 30-day expiry, REST logout/expiry rejection, and revoked WebSocket rejection.`n- Item 4: `python -m pytest -x -q` → 12 passed, including sender/recipient message WS delivery, `sent → delivered → read` receipts, typing, presence transitions, pending delivery on reconnect, and multiple tabs.
 - The test suite uses `sqlite://` with `StaticPool`, `check_same_thread=False`, overrides `get_db`, and sets `TESTING=1`; production lifespan creates tables and seeds only outside test mode.
 - The backend and frontend installs needed the approved network/runtime execution path because package networking and Windows asyncio's internal socketpair are blocked in the default shell sandbox.
+
 
