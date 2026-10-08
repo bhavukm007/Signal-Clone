@@ -90,7 +90,8 @@ async def save_avatar(upload: UploadFile) -> str:
 
 async def update_avatar(db: Session, owner: User, upload: UploadFile) -> dict[str, str]:
     storage_name = await save_avatar(upload)
-    owner.avatar_url = f'/uploads/{storage_name}'
+    owner.avatar_storage_path = storage_name
+    owner.avatar_url = f'/api/v1/media/avatars/{owner.id}'
     db.commit()
     db.refresh(owner)
     return {'avatar_url': owner.avatar_url}
@@ -102,5 +103,5 @@ def serialize_attachment(attachment: Attachment) -> dict[str, object]:
         'file_name': attachment.file_name,
         'mime_type': attachment.mime_type,
         'size_bytes': attachment.size_bytes,
-        'url': f'/uploads/{attachment.storage_path}',
+        'url': f'/api/v1/media/attachments/{attachment.id}',
     }

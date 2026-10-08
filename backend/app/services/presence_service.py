@@ -5,6 +5,7 @@ from app.db.base import utc_now
 from app.models.contact import Contact
 from app.models.conversation import Participant
 from app.models.user import User
+from app.repositories.contact_repository import is_blocked
 
 
 def set_online(db: Session, user_id: str, online: bool) -> User | None:
@@ -29,4 +30,8 @@ def relevant_user_ids(db: Session, user_id: str) -> set[str]:
     )).all())
     inbound = set(db.scalars(select(Contact.owner_id).where(Contact.contact_user_id == user_id)).all())
     outbound = set(db.scalars(select(Contact.contact_user_id).where(Contact.owner_id == user_id)).all())
-    return shared | inbound | outbound
+    candidates = shared | inbound | outbound
+    return {
+        candidate for candidate in candidates
+        if not is_blocked(db, candidate, user_id) and not is_blocked(db, user_id, candidate)
+    }

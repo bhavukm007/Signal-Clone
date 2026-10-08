@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import router as api_router
@@ -19,27 +18,28 @@ from app import models
 from app.ws.router import router as websocket_router
 from app.core.logging import logger
 from app.services.disappearing_service import purge_expired_and_broadcast
+from app.ws.manager import manager
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    worker: asyncio.Task[None] | None = None
+    workers: list[asyncio.Task[None]] = []
     if not settings.testing:
         settings.upload_dir.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(engine)
         upgrade_legacy_schema(engine)
         with SessionLocal() as session:
             seed_if_empty(session)
-        worker = asyncio.create_task(expiration_loop(), name='disappearing-message-purger')
+        workers = [
+            asyncio.create_task(expiration_loop(), name='disappearing-message-purger'),
+            asyncio.create_task(connection_sweeper(), name='websocket-connection-sweeper'),
+        ]
     try:
         yield
     finally:
-        if worker is not None:
+        for worker in workers:
             worker.cancel()
-            try:
-                await worker
-            except asyncio.CancelledError:
-                pass
+        await asyncio.gather(*workers, return_exceptions=True)
 
 
 async def expiration_loop() -> None:
@@ -50,6 +50,15 @@ async def expiration_loop() -> None:
         except Exception:
             logger.exception('Failed to purge expired messages')
         await asyncio.sleep(2)
+
+
+async def connection_sweeper() -> None:
+    while True:
+        try:
+            await manager.drop_stale()
+        except Exception:
+            logger.exception('Failed to sweep stale websocket connections')
+        await asyncio.sleep(10)
 
 
 app = FastAPI(title='Signal Clone API', version='1.0.0', lifespan=lifespan)
@@ -93,6 +102,5 @@ def health() -> dict[str, str]:
 
 app.include_router(api_router, prefix='/api/v1')
 app.include_router(websocket_router)
-app.mount('/uploads', StaticFiles(directory=str(settings.upload_dir), check_dir=False), name='uploads')
 
 __all__ = ['Base', 'app', 'get_db']

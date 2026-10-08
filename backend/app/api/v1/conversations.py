@@ -27,7 +27,7 @@ def direct(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    conversation = conversation_service.get_or_create_direct(db, user, body)
+    conversation = conversation_service.get_or_create_direct(db, user, body.user_id)
     return {'id': conversation.id, 'type': conversation.type, 'title': conversation.title}
 
 
@@ -59,6 +59,9 @@ def update_conversation(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    conversation = conversation_service.update_conversation(db, conversation_id, user, body)
+    conversation = conversation_service.update_conversation(
+        db, conversation_id, user, body.is_pinned, body.is_archived,
+        body.muted_until, body.disappearing_timer_seconds,
+    )
     return {'id': conversation.id, 'disappearing_timer_seconds': conversation.disappearing_timer_seconds}
 

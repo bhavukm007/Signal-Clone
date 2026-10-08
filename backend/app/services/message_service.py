@@ -8,47 +8,63 @@ from app.db.base import utc_now
 from app.models.message import Attachment, Message, Reaction, Receipt
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
+from app.repositories.contact_repository import is_blocked
 from app.repositories.attachment_repository import by_id as get_attachment
 from app.repositories.attachment_repository import for_message as list_attachments
-from app.schemas.message import MessageCreate
-from app.schemas.user import UserOut
+from app.services.presentation_service import serialize_user
 
 
-def create_message(db: Session, conversation_id: str, sender: User, body: MessageCreate) -> Message:
+def create_message(
+    db: Session,
+    conversation_id: str,
+    sender: User,
+    body: str,
+    client_message_id: str,
+    reply_to_id: str | None = None,
+    attachment_ids: list[str] | None = None,
+) -> Message:
     conversation_service_member = conversation_repository.membership(db, conversation_id, sender.id)
     if conversation_service_member is None:
         raise HTTPException(status_code=403, detail='Conversation membership required')
-    existing = message_repository.by_idempotency_key(db, sender.id, body.client_message_id)
+    conversation = conversation_repository.by_id(db, conversation_id)
+    if conversation.type == 'direct':
+        recipients = conversation_repository.participants(db, conversation_id)
+        if any(
+            row.user_id != sender.id and is_blocked(db, row.user_id, sender.id)
+            for row in recipients
+        ):
+            raise HTTPException(status_code=403, detail='This user does not accept messages from you')
+    attachment_ids = attachment_ids or []
+    existing = message_repository.by_idempotency_key(db, sender.id, client_message_id)
     if existing is not None:
         return existing
-    if not body.body.strip() and not body.attachment_ids:
+    if not body.strip() and not attachment_ids:
         raise HTTPException(status_code=422, detail='Message text or an attachment is required')
     attachments: list[Attachment] = []
-    for attachment_id in body.attachment_ids:
+    for attachment_id in attachment_ids:
         attachment = get_attachment(db, attachment_id)
         if attachment is None or attachment.uploaded_by != sender.id:
             raise HTTPException(status_code=404, detail='Attachment not found')
         if attachment.message_id is not None:
             raise HTTPException(status_code=409, detail='Attachment has already been sent')
         attachments.append(attachment)
-    if body.reply_to_id:
-        reply = message_repository.by_id(db, body.reply_to_id)
+    if reply_to_id:
+        reply = message_repository.by_id(db, reply_to_id)
         if reply is None or reply.conversation_id != conversation_id:
             raise HTTPException(status_code=404, detail='Reply target not found in this conversation')
-    conversation = conversation_repository.by_id(db, conversation_id)
     expires_at = None
     if conversation.disappearing_timer_seconds:
         expires_at = utc_now() + timedelta(seconds=conversation.disappearing_timer_seconds)
     message = Message(
         conversation_id=conversation_id,
         sender_id=sender.id,
-        body=body.body,
+        body=body,
         type=(
             'image' if attachments and attachments[0].mime_type.startswith('image/')
             else 'file' if attachments else 'text'
         ),
-        client_message_id=body.client_message_id,
-        reply_to_id=body.reply_to_id,
+        client_message_id=client_message_id,
+        reply_to_id=reply_to_id,
         expires_at=expires_at,
     )
     db.add(message)
@@ -142,7 +158,17 @@ def mark_read(db: Session, user: User, conversation_id: str, up_to_message_id: s
 
 
 def aggregate_status(db: Session, message_id: str) -> str:
-    receipts = message_repository.receipts_for_message(db, message_id)
+    message = message_repository.by_id(db, message_id)
+    if message is None:
+        return 'sent'
+    active_user_ids = {
+        row.user_id for row in conversation_repository.participants(db, message.conversation_id)
+        if row.user_id != message.sender_id
+    }
+    receipts = [
+        row for row in message_repository.receipts_for_message(db, message_id)
+        if row.user_id in active_user_ids
+    ]
     if not receipts:
         return 'read'
     statuses = {receipt.status for receipt in receipts}
@@ -167,6 +193,16 @@ def delete_message(db: Session, user: User, message_id: str) -> Message:
     return message
 
 
+async def delete_and_broadcast(db: Session, user: User, message_id: str) -> Message:
+    message = delete_message(db, user, message_id)
+    from app.services.realtime_service import broadcast_conversation
+    from app.ws.events import EventType
+    await broadcast_conversation(db, message.conversation_id, EventType.MESSAGE_DELETED, {
+        'message_id': message.id, 'conversation_id': message.conversation_id,
+    })
+    return message
+
+
 def set_reaction(db: Session, user: User, message_id: str, emoji: str, remove: bool = False) -> Reaction | None:
     message = message_repository.by_id(db, message_id)
     if message is None:
@@ -188,6 +224,22 @@ def set_reaction(db: Session, user: User, message_id: str, emoji: str, remove: b
     return reaction
 
 
+async def set_reaction_and_broadcast(
+    db: Session, user: User, message_id: str, emoji: str, remove: bool = False,
+) -> Reaction | None:
+    reaction = set_reaction(db, user, message_id, emoji, remove)
+    message = message_repository.by_id(db, message_id)
+    if message is not None:
+        from app.services.realtime_service import broadcast_conversation
+        from app.ws.events import EventType
+        await broadcast_conversation(db, message.conversation_id, EventType.REACTION_UPDATED, {
+            'message_id': message_id,
+            'user_id': user.id,
+            'emoji': reaction.emoji if reaction else None,
+        })
+    return reaction
+
+
 def serialize_message(db: Session, message: Message) -> dict[str, object]:
     sender = user_repository.by_id(db, message.sender_id)
     reaction_counts: dict[str, list[str]] = {}
@@ -197,7 +249,7 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'id': message.id,
         'conversation_id': message.conversation_id,
         'sender_id': message.sender_id,
-        'sender': UserOut.model_validate(sender).model_dump(mode='json'),
+        'sender': serialize_user(sender),
         'body': message.body,
         'type': message.type,
         'client_message_id': message.client_message_id,
@@ -217,7 +269,7 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
                 'file_name': attachment.file_name,
                 'mime_type': attachment.mime_type,
                 'size_bytes': attachment.size_bytes,
-                'url': f'/uploads/{attachment.storage_path}',
+                'url': f'/api/v1/media/attachments/{attachment.id}',
             }
             for attachment in list_attachments(db, message.id)
         ],

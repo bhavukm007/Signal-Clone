@@ -13,12 +13,12 @@ router = APIRouter(prefix='/auth', tags=['auth'])
 
 @router.post('/request-otp', response_model=OtpAccepted)
 def request_otp(body: OtpRequest, db: Session = Depends(get_db)):
-    return auth_service.request_otp(db, body)
+    return auth_service.request_otp(db, body.identifier)
 
 
 @router.post('/verify-otp')
 def verify_otp(body: OtpVerify, db: Session = Depends(get_db)):
-    result = auth_service.verify_otp(db, body)
+    result = auth_service.verify_otp(db, body.identifier, body.code)
     result['user'] = UserOut.model_validate(result['user'])
     return result
 
@@ -29,7 +29,7 @@ def update_profile(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return auth_service.update_profile(db, user, body)
+    return auth_service.update_profile(db, user, body.display_name, body.about)
 
 
 @router.post('/logout')

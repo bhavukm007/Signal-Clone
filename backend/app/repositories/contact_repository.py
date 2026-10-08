@@ -16,3 +16,11 @@ def by_owner_and_user(db: Session, owner_id: str, user_id: str) -> Contact | Non
     return db.scalar(
         select(Contact).where(Contact.owner_id == owner_id, Contact.contact_user_id == user_id)
     )
+
+
+def is_blocked(db: Session, owner_id: str, user_id: str) -> bool:
+    return db.scalar(select(Contact.id).where(
+        Contact.owner_id == owner_id,
+        Contact.contact_user_id == user_id,
+        Contact.is_blocked.is_(True),
+    )) is not None

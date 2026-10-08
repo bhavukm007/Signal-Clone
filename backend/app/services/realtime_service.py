@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.message import Message, Receipt
 from app.repositories import conversation_repository, message_repository
+from app.repositories.contact_repository import is_blocked
 from app.services import message_service
 from app.ws.events import EventType
 from app.ws.manager import manager
@@ -15,7 +16,14 @@ async def broadcast_conversation(
     payload: dict,
     excluded_user_id: str | None = None,
 ) -> None:
-    user_ids = {row.user_id for row in conversation_repository.participants(db, conversation_id)}
+    participants = conversation_repository.participants(db, conversation_id)
+    user_ids = {
+        row.user_id for row in participants
+        if not any(
+            is_blocked(db, other.user_id, row.user_id)
+            for other in participants if other.user_id != row.user_id
+        )
+    }
     await manager.send_many(user_ids, event.value, payload, excluded_user_id)
 
 
@@ -45,6 +53,8 @@ async def publish_message(
 async def publish_receipt(db: Session, receipt: Receipt) -> None:
     message = message_repository.by_id(db, receipt.message_id)
     if message is None:
+        return
+    if is_blocked(db, receipt.user_id, message.sender_id):
         return
     await manager.send_user(message.sender_id, EventType.MESSAGE_STATUS.value, {
         'message_id': message.id,

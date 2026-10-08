@@ -5,6 +5,7 @@ from sqlalchemy import Engine, inspect, text
 from app.db.base import Base
 
 LEGACY_COLUMNS: dict[str, dict[str, str]] = {
+    'users': {'avatar_storage_path': 'VARCHAR(255)'},
     'otp_challenges': {'created_at': 'DATETIME'},
     'conversations': {'description': 'TEXT', 'avatar_url': 'VARCHAR(500)'},
     'conversation_participants': {
@@ -33,6 +34,13 @@ def upgrade_legacy_schema(engine: Engine) -> None:
                     connection.execute(text(
                         f'ALTER TABLE "{table_name}" ADD COLUMN "{column_name}" {column_type}'
                     ))
+            if table_name == 'users' and 'avatar_url' in existing:
+                connection.execute(text('''
+                    UPDATE users
+                    SET avatar_storage_path = substr(avatar_url, 10),
+                        avatar_url = '/api/v1/media/avatars/' || id
+                    WHERE avatar_url LIKE '/uploads/%' AND avatar_storage_path IS NULL
+                '''))
             if table_name == 'conversation_participants':
                 connection.execute(text(
                     'UPDATE conversation_participants SET joined_at = CURRENT_TIMESTAMP WHERE joined_at IS NULL'

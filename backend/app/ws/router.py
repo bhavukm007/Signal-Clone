@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.user import User
-from app.repositories import message_repository
 from app.schemas.message import MessageCreate, ReactionInput
 from app.services import auth_service, conversation_service, message_service, presence_service, realtime_service
 from app.ws.events import EventType
@@ -25,7 +24,8 @@ async def handle_frame(websocket: WebSocket, db: Session, user: User, frame: dic
         if not conversation_id:
             raise ValueError('conversation_id is required')
         message = message_service.create_message(
-            db, conversation_id, user, message_body
+            db, conversation_id, user, message_body.body, message_body.client_message_id,
+            message_body.reply_to_id, message_body.attachment_ids,
         )
         await manager.send_user(user.id, EventType.MESSAGE_ACK.value, {
             'client_message_id': message.client_message_id,
@@ -65,17 +65,9 @@ async def handle_frame(websocket: WebSocket, db: Session, user: User, frame: dic
         if event_type == 'reaction.set':
             reaction_body = ReactionInput.model_validate(payload)
             emoji = reaction_body.emoji
-        reaction = message_service.set_reaction(
+        await message_service.set_reaction_and_broadcast(
             db, user, message_id, emoji, remove=event_type == 'reaction.remove'
         )
-        message = message_repository.by_id(db, message_id)
-        if message:
-            await realtime_service.broadcast_conversation(
-                db,
-                message.conversation_id,
-                EventType.REACTION_UPDATED,
-                {'message_id': message_id, 'user_id': user.id, 'emoji': reaction.emoji if reaction else None},
-            )
         return
     await websocket.send_json({
         'type': EventType.ERROR.value,
@@ -95,18 +87,18 @@ async def websocket_endpoint(
         return
 
     first_socket = await manager.connect(user.id, websocket)
-    if first_socket:
-        online_user = presence_service.set_online(db, user.id, True)
-        await realtime_service.presence_changed(
-            db, user.id, True, online_user.last_seen_at if online_user else None
-        )
-        pending = message_service.mark_pending_delivered(db, user.id)
-        await realtime_service.publish_receipts(db, pending)
-
     try:
+        if first_socket:
+            online_user = presence_service.set_online(db, user.id, True)
+            await realtime_service.presence_changed(
+                db, user.id, True, online_user.last_seen_at if online_user else None
+            )
+            pending = message_service.mark_pending_delivered(db, user.id)
+            await realtime_service.publish_receipts(db, pending)
         while True:
             try:
                 frame = await websocket.receive_json()
+                manager.touch(websocket)
                 if not isinstance(frame, dict):
                     raise ValueError('Frame must be a JSON object')
                 await handle_frame(websocket, db, user, frame)
@@ -130,9 +122,15 @@ async def websocket_endpoint(
                 else:
                     raise
     except WebSocketDisconnect:
+        pass
+    finally:
         last_socket = manager.disconnect(user.id, websocket)
         if last_socket:
-            offline_user = presence_service.set_online(db, user.id, False)
-            await realtime_service.presence_changed(
-                db, user.id, False, offline_user.last_seen_at if offline_user else None
-            )
+            try:
+                offline_user = presence_service.set_online(db, user.id, False)
+                await realtime_service.presence_changed(
+                    db, user.id, False, offline_user.last_seen_at if offline_user else None
+                )
+            except Exception:
+                from app.core.logging import logger
+                logger.exception('Failed to publish websocket offline transition')

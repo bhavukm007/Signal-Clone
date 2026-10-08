@@ -17,6 +17,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(80), default='')
     about: Mapped[str] = mapped_column(String(240), default='Hey there! I am using Signal.')
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500))
+    avatar_storage_path: Mapped[Optional[str]] = mapped_column(String(255))
     avatar_color: Mapped[str] = mapped_column(String(7), default='#8298c9')
     is_online: Mapped[bool] = mapped_column(Boolean, default=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

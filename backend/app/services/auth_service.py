@@ -8,19 +8,17 @@ from app.db.base import utc_now
 from app.models.auth import AuthSession, OtpChallenge
 from app.models.user import User
 from app.repositories import auth_repository, user_repository
-from app.schemas.auth import OtpRequest, OtpVerify
-from app.schemas.user import ProfileUpdate
 
 
-def request_otp(db: Session, body: OtpRequest) -> dict[str, object]:
-    db.add(OtpChallenge(identifier=body.identifier, code=settings.otp_code, expires_at=utc_now() + timedelta(minutes=10)))
+def request_otp(db: Session, identifier: str) -> dict[str, object]:
+    db.add(OtpChallenge(identifier=identifier, code=settings.otp_code, expires_at=utc_now() + timedelta(minutes=10)))
     db.commit()
     return {'ok': True, 'hint': 'Use 123456'}
 
 
-def verify_otp(db: Session, body: OtpVerify) -> dict[str, object]:
-    challenge = auth_repository.latest_otp(db, body.identifier)
-    if challenge is None or body.code != settings.otp_code:
+def verify_otp(db: Session, identifier: str, code: str) -> dict[str, object]:
+    challenge = auth_repository.latest_otp(db, identifier)
+    if challenge is None or code != settings.otp_code:
         raise HTTPException(status_code=401, detail='Invalid or expired verification code')
     expiry = challenge.expires_at
     if expiry.tzinfo is None:
@@ -28,12 +26,12 @@ def verify_otp(db: Session, body: OtpVerify) -> dict[str, object]:
     if expiry < utc_now():
         raise HTTPException(status_code=401, detail='Invalid or expired verification code')
     challenge.consumed_at = utc_now()
-    user = user_repository.by_identifier(db, body.identifier)
+    user = user_repository.by_identifier(db, identifier)
     is_new = user is None
     if user is None:
         user = User(
-            phone_number=body.identifier if body.identifier.startswith('+') else None,
-            username=None if body.identifier.startswith('+') else body.identifier,
+            phone_number=identifier if identifier.startswith('+') else None,
+            username=None if identifier.startswith('+') else identifier,
             display_name='',
         )
         user_repository.create(db, user)
@@ -49,10 +47,10 @@ def verify_otp(db: Session, body: OtpVerify) -> dict[str, object]:
     return {'token': token, 'user': user, 'is_new_user': is_new}
 
 
-def update_profile(db: Session, user: User, body: ProfileUpdate) -> User:
-    user.display_name = body.display_name
-    if body.about is not None:
-        user.about = body.about
+def update_profile(db: Session, user: User, display_name: str, about: str | None) -> User:
+    user.display_name = display_name
+    if about is not None:
+        user.about = about
     db.commit()
     db.refresh(user)
     return user

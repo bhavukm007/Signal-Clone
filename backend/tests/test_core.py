@@ -293,11 +293,22 @@ def test_group_admin_management_system_messages_and_membership(client: TestClien
         headers={'Authorization': f"Bearer {second_member['token']}"},
     )
     assert left.status_code == 200
+    removed_headers = {'Authorization': f"Bearer {second_member['token']}"}
     denied_after_leave = client.get(
         f"/api/v1/groups/{group_id}/members",
-        headers={'Authorization': f"Bearer {second_member['token']}"},
+        headers=removed_headers,
     )
     assert denied_after_leave.status_code == 403
+    denied_history = client.get(
+        f'/api/v1/conversations/{group_id}/messages', headers=removed_headers,
+    )
+    denied_send = client.post(
+        f'/api/v1/conversations/{group_id}/messages',
+        headers=removed_headers,
+        json={'body': 'I left', 'client_message_id': 'removed-member-send'},
+    )
+    assert denied_history.status_code == 403
+    assert denied_send.status_code == 403
 
 
 
@@ -336,13 +347,35 @@ def test_group_changes_broadcast_system_message_and_update(client: TestClient) -
 
 
 
-def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> None:
+def test_validated_uploads_avatar_and_message_attachment(
+    client: TestClient, db_session, monkeypatch,
+) -> None:
+    from dataclasses import replace
     from pathlib import Path
+    from app.models.message import Attachment
+    from app.models.user import User
+    from app.services import upload_service
 
     first = login(client, '+91 90000 00018')
     second = login(client, '+91 90000 00019')
+    outsider = login(client, '+91 90000 00022')
     first_headers = {'Authorization': f"Bearer {first['token']}"}
     second_headers = {'Authorization': f"Bearer {second['token']}"}
+    upload_settings = upload_service.settings
+    monkeypatch.setattr(upload_service, 'settings', replace(upload_settings, max_upload_bytes=4))
+    oversized = client.post(
+        '/api/v1/uploads', headers=first_headers,
+        files={'file': ('large.txt', b'12345', 'text/plain')},
+    )
+    assert oversized.status_code == 413
+    assert oversized.json()['error']['code'] == 'REQUEST_ERROR'
+    monkeypatch.setattr(upload_service, 'settings', upload_settings)
+    mismatched = client.post(
+        '/api/v1/uploads', headers=first_headers,
+        files={'file': ('fake.png', b'not png', 'image/png')},
+    )
+    assert mismatched.status_code == 422
+    assert mismatched.json()['error']['code'] == 'VALIDATION_ERROR'
     rejected = client.post(
         '/api/v1/uploads',
         headers=first_headers,
@@ -359,7 +392,7 @@ def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> 
     assert upload.status_code == 200
     attachment = upload.json()
     assert attachment['file_name'] == 'notes.txt'
-    assert client.get(attachment['url']).text == 'hello attachment'
+    assert client.get(attachment['url']).status_code == 401
 
     conversation = client.post(
         '/api/v1/conversations/direct',
@@ -380,6 +413,11 @@ def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> 
     assert sent.status_code == 200
     assert sent.json()['type'] == 'file'
     assert sent.json()['attachments'][0]['id'] == attachment['id']
+    assert client.get(attachment['url'], headers=first_headers).status_code == 200
+    assert client.get(attachment['url'], headers=second_headers).status_code == 200
+    assert client.get(
+        attachment['url'], headers={'Authorization': f"Bearer {outsider['token']}"}
+    ).status_code == 403
     used_again = client.post(
         f"/api/v1/conversations/{conversation['id']}/messages",
         headers=first_headers,
@@ -393,10 +431,13 @@ def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> 
         files={'file': ('avatar.png', b'\x89PNG\r\n\x1a\nsmall-png', 'image/png')},
     )
     assert avatar.status_code == 200
-    assert client.get(avatar.json()['avatar_url']).content.startswith(b'\x89PNG')
+    assert client.get(avatar.json()['avatar_url'], headers=first_headers).content.startswith(b'\x89PNG')
 
-    upload_file = Path('uploads') / attachment['url'].rsplit('/', 1)[-1]
-    avatar_file = Path('uploads') / avatar.json()['avatar_url'].rsplit('/', 1)[-1]
+    attachment_row = db_session.get(Attachment, attachment['id'])
+    avatar_user = db_session.get(User, first['user']['id'])
+    assert attachment_row is not None and avatar_user is not None
+    upload_file = Path('uploads') / attachment_row.storage_path
+    avatar_file = Path('uploads') / str(avatar_user.avatar_storage_path)
     upload_file.unlink(missing_ok=True)
     avatar_file.unlink(missing_ok=True)
 
@@ -439,10 +480,11 @@ def test_disappearing_timer_purges_and_broadcasts_delete(client: TestClient, db_
             message_id = ack['payload']['message_id']
             message = db_session.scalar(select(Message).where(Message.id == message_id))
             assert message is not None and message.expires_at is not None
-            message.expires_at = utc_now() - timedelta(seconds=1)
+            message.expires_at = utc_now() + timedelta(seconds=1)
             db_session.commit()
 
-            purged = client.portal.call(purge_expired_and_broadcast, db_session)
+            deterministic_now = utc_now() + timedelta(seconds=2)
+            purged = client.portal.call(purge_expired_and_broadcast, db_session, deterministic_now)
             assert purged == [message_id]
             deleted_event = recipient_socket.receive_json()
             assert deleted_event['type'] == 'message.deleted'

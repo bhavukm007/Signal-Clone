@@ -5,8 +5,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.message import MessageCreate, ReactionInput
-from app.services import message_service
-from app.services import realtime_service
+from app.services import message_service, realtime_service
 
 router = APIRouter(tags=['messages'])
 
@@ -30,7 +29,10 @@ async def create_message(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    message = message_service.create_message(db, conversation_id, user, body)
+    message = message_service.create_message(
+        db, conversation_id, user, body.body, body.client_message_id,
+        body.reply_to_id, body.attachment_ids,
+    )
     await realtime_service.publish_message(db, message, user.id)
     return message_service.serialize_message(db, message)
 
@@ -41,12 +43,7 @@ async def delete_message(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    message = message_service.delete_message(db, user, message_id)
-    from app.ws.events import EventType
-    from app.services.realtime_service import broadcast_conversation
-    await broadcast_conversation(db, message.conversation_id, EventType.MESSAGE_DELETED, {
-        'message_id': message.id, 'conversation_id': message.conversation_id,
-    })
+    message = await message_service.delete_and_broadcast(db, user, message_id)
     return {'id': message.id, 'deleted_at': message.deleted_at}
 
 
@@ -57,15 +54,7 @@ async def set_reaction(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    reaction = message_service.set_reaction(db, user, message_id, body.emoji)
-    from app.repositories.message_repository import by_id
-    from app.services.realtime_service import broadcast_conversation
-    from app.ws.events import EventType
-    message = by_id(db, message_id)
-    if message:
-        await broadcast_conversation(db, message.conversation_id, EventType.REACTION_UPDATED, {
-            'message_id': message_id, 'user_id': user.id, 'emoji': reaction.emoji if reaction else body.emoji,
-        })
+    reaction = await message_service.set_reaction_and_broadcast(db, user, message_id, body.emoji)
     return {'ok': True, 'emoji': reaction.emoji if reaction else body.emoji}
 
 
@@ -75,13 +64,5 @@ async def remove_reaction(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    message_service.set_reaction(db, user, message_id, '', remove=True)
-    from app.repositories.message_repository import by_id
-    from app.services.realtime_service import broadcast_conversation
-    from app.ws.events import EventType
-    message = by_id(db, message_id)
-    if message:
-        await broadcast_conversation(db, message.conversation_id, EventType.REACTION_UPDATED, {
-            'message_id': message_id, 'user_id': user.id, 'emoji': None,
-        })
+    await message_service.set_reaction_and_broadcast(db, user, message_id, '', remove=True)
     return {'ok': True}

@@ -25,7 +25,7 @@ def edit_me(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return auth_service.update_profile(db, user, body)
+    return auth_service.update_profile(db, user, body.display_name, body.about)
 
 
 @router.post('/me/avatar')
