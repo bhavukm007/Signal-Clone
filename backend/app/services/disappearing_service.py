@@ -9,3 +9,25 @@ def expired_messages(db: Session, now: datetime | None = None) -> list[Message]:
     return list(db.scalars(select(Message).where(
         Message.expires_at.is_not(None), Message.expires_at <= current, Message.deleted_at.is_(None),
     )))
+
+
+async def purge_expired_and_broadcast(db: Session) -> list[str]:
+    from app.db.base import utc_now
+    from app.services.realtime_service import broadcast_conversation
+    from app.ws.events import EventType
+
+    messages = expired_messages(db)
+    now = utc_now()
+    for message in messages:
+        message.deleted_at = now
+        message.body = 'This message expired'
+    if messages:
+        db.commit()
+    for message in messages:
+        await broadcast_conversation(
+            db,
+            message.conversation_id,
+            EventType.MESSAGE_DELETED,
+            {'message_id': message.id, 'conversation_id': message.conversation_id},
+        )
+    return [message.id for message in messages]

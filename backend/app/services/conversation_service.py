@@ -1,4 +1,3 @@
-from datetime import timedelta
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -93,13 +92,6 @@ def update_conversation(db: Session, conversation_id: str, user: User, body: Con
             setattr(participant, field, value)
     if body.disappearing_timer_seconds is not None:
         conversation.disappearing_timer_seconds = body.disappearing_timer_seconds or None
-        if body.disappearing_timer_seconds:
-            for message in db.scalars(select(Message).where(
-                Message.conversation_id == conversation_id,
-                Message.type != 'system',
-                Message.expires_at.is_(None),
-            )):
-                message.expires_at = message.created_at + timedelta(seconds=body.disappearing_timer_seconds)
     db.commit()
     db.refresh(conversation)
     return conversation

@@ -22,6 +22,7 @@ class MessageOut(BaseModel):
     created_at: datetime
     edited_at: datetime | None = None
     deleted_at: datetime | None = None
+    expires_at: datetime | None = None
     reply_to_id: str | None = None
     status: str = 'sent'
     attachments: list[AttachmentOut] = Field(default_factory=list)

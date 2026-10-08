@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -15,16 +16,38 @@ from app.db.seed import seed_if_empty
 from app.db.session import SessionLocal, engine, get_db
 from app import models
 from app.ws.router import router as websocket_router
+from app.core.logging import logger
+from app.services.disappearing_service import purge_expired_and_broadcast
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    worker: asyncio.Task[None] | None = None
     if not settings.testing:
         settings.upload_dir.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(engine)
         with SessionLocal() as session:
             seed_if_empty(session)
-    yield
+        worker = asyncio.create_task(expiration_loop(), name='disappearing-message-purger')
+    try:
+        yield
+    finally:
+        if worker is not None:
+            worker.cancel()
+            try:
+                await worker
+            except asyncio.CancelledError:
+                pass
+
+
+async def expiration_loop() -> None:
+    while True:
+        try:
+            with SessionLocal() as session:
+                await purge_expired_and_broadcast(session)
+        except Exception:
+            logger.exception('Failed to purge expired messages')
+        await asyncio.sleep(2)
 
 
 app = FastAPI(title='Signal Clone API', version='1.0.0', lifespan=lifespan)

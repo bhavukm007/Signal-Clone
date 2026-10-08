@@ -399,3 +399,54 @@ def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> 
     avatar_file = Path('uploads') / avatar.json()['avatar_url'].rsplit('/', 1)[-1]
     upload_file.unlink(missing_ok=True)
     avatar_file.unlink(missing_ok=True)
+
+
+def test_disappearing_timer_purges_and_broadcasts_delete(client: TestClient, db_session) -> None:
+    from datetime import timedelta
+    from sqlalchemy import select
+    from app.db.base import utc_now
+    from app.models.message import Message
+    from app.services.disappearing_service import purge_expired_and_broadcast
+
+    sender = login(client, '+91 90000 00020')
+    recipient = login(client, '+91 90000 00021')
+    headers = {'Authorization': f"Bearer {sender['token']}"}
+    conversation = client.post('/api/v1/conversations/direct', headers=headers, json={
+        'user_id': recipient['user']['id'],
+    }).json()
+    timer = client.patch(
+        f"/api/v1/conversations/{conversation['id']}",
+        headers=headers,
+        json={'disappearing_timer_seconds': 120},
+    )
+    assert timer.status_code == 200
+
+    with client.websocket_connect(f"/ws?token={sender['token']}") as sender_socket:
+        with client.websocket_connect(f"/ws?token={recipient['token']}") as recipient_socket:
+            assert sender_socket.receive_json()['type'] == 'presence'
+            sender_socket.send_json({
+                'type': 'message.send',
+                'payload': {
+                    'conversation_id': conversation['id'],
+                    'body': 'vanishing note',
+                    'client_message_id': 'expires-soon-1',
+                },
+            })
+            ack = sender_socket.receive_json()
+            incoming = recipient_socket.receive_json()
+            sender_socket.receive_json()
+            assert incoming['type'] == 'message.new'
+            message_id = ack['payload']['message_id']
+            message = db_session.scalar(select(Message).where(Message.id == message_id))
+            assert message is not None and message.expires_at is not None
+            message.expires_at = utc_now() - timedelta(seconds=1)
+            db_session.commit()
+
+            purged = client.portal.call(purge_expired_and_broadcast, db_session)
+            assert purged == [message_id]
+            deleted_event = recipient_socket.receive_json()
+            assert deleted_event['type'] == 'message.deleted'
+            assert deleted_event['payload']['message_id'] == message_id
+            db_session.refresh(message)
+            assert message.deleted_at is not None
+            assert message.body == 'This message expired'

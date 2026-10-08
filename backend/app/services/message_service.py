@@ -201,6 +201,7 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'created_at': message.created_at.isoformat(),
         'edited_at': message.edited_at.isoformat() if message.edited_at else None,
         'deleted_at': message.deleted_at.isoformat() if message.deleted_at else None,
+        'expires_at': message.expires_at.isoformat() if message.expires_at else None,
         'reply_to_id': message.reply_to_id,
         'status': aggregate_status(db, message.id),
         'attachments': [
