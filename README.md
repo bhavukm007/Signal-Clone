@@ -1,32 +1,27 @@
 # Signal Clone
 
-A full stack messaging demo inspired by Signal Desktop. The project uses a Next.js App Router client and a FastAPI + SQLAlchemy backend backed by SQLite. Screenshots: _add a screenshot of the running app here_.
+A full-stack desktop-style messaging demo built with Next.js, FastAPI, SQLAlchemy, and SQLite. It includes onboarding, contacts, direct and group conversations, persisted messages, realtime delivery/read status, typing and presence events, uploads, reactions, replies, disappearing timers, and light/dark themes.
 
-## Demo
+**Screenshots:** _placeholder — add screenshots of the running app here._
 
-Use **+91 90000 00001** or **+91 90000 00002**, then enter OTP **123456**. The app seeds 10 demo users, conversations, groups, and chat history on first startup. There is no real phone delivery.
+## Demo accounts
 
-## Stack and architecture
+Sign in as `+91 90000 00001` or `+91 90000 00002` and enter the fixed OTP `123456`. Use a second browser profile for the other account. The app seeds ten realistic users and sample conversations the first time an empty database starts.
 
-- Next.js 14, React, TypeScript strict, Tailwind, Zustand/TanStack Query dependencies, Lucide icons.
-- FastAPI, Pydantic v2, SQLAlchemy 2, SQLite with FK enforcement and WAL, native WebSockets.
-- SQLite is intentionally simple for a local assignment; use a persistent disk in hosted environments.
+## Technology choices
 
-```mermaid
-flowchart LR
-  Browser[Next.js client] -->|REST /api/v1| API[FastAPI routes]
-  API --> Services[Domain operations]
-  Services --> Repos[SQLAlchemy data layer]
-  Repos --> DB[(SQLite)]
-  Browser <-->|WebSocket events| Hub[In-memory WS manager]
-  Hub --> DB
-```
+- **Next.js 14 App Router + strict TypeScript:** route layouts keep onboarding and the authenticated messaging shell separate.
+- **Tailwind CSS + CSS variables:** Tailwind is available for utility styling; CSS variables provide shared Signal-like light and dark tokens.
+- **Zustand + TanStack Query:** Zustand owns session and short-lived UI/realtime state; Query owns REST-backed lists and message pages.
+- **Native WebSocket wrapper:** keeps the event protocol small, reconnects with backoff, and resynchronizes active conversations through REST.
+- **FastAPI + Pydantic v2 + SQLAlchemy 2:** typed HTTP/WebSocket boundaries with explicit services and repositories.
+- **SQLite:** simple local persistence with foreign keys and WAL; suitable for a single backend instance in this demo.
 
-Route handlers validate input and authenticate, then call domain helpers; SQLAlchemy entities are the persistence boundary. The compact starter currently keeps several helpers/models in `backend/app/main.py`; expand them into the repository/service modules as the feature set grows. UI state lives in React component state today; Zustand and TanStack Query are installed for the next extraction pass.
+## Local setup
 
-## Setup
+Requirements: Python 3.11+, Node.js 20+, npm.
 
-Backend (Python 3.11+):
+### Backend
 
 ```powershell
 cd backend
@@ -34,88 +29,278 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --env-file .env
 ```
 
-Frontend (Node 20+), in a second terminal:
+The backend creates tables, applies additive upgrades to earlier SQLite files, and seeds an empty database at startup. Local defaults are `sqlite:///./signal.db`, `uploads/`, `OTP_CODE=123456`, and CORS origin `http://localhost:3000`. API docs are at [http://localhost:8000/docs](http://localhost:8000/docs); health is at [http://localhost:8000/health](http://localhost:8000/health).
+
+### Frontend
+
+In a second terminal:
 
 ```powershell
 cd frontend
 Copy-Item .env.example .env.local
-npm install
+npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. API docs are at http://localhost:8000/docs and health is at http://localhost:8000/health. Config: backend `DATABASE_URL`, `JWT_SECRET`, comma-separated `CORS_ORIGINS`, `UPLOAD_DIR`, `OTP_CODE`; frontend `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL`.
+Open [http://localhost:3000](http://localhost:3000). The example frontend URLs target the local backend at `http://localhost:8000/api/v1` and `ws://localhost:8000/ws`.
 
-Run backend tests: `cd backend; pytest`. Frontend checks: `cd frontend; npm run typecheck; npm run build`.
+### Environment variables
+
+| Variable | Service | Example / purpose |
+|---|---|---|
+| `DATABASE_URL` | Backend | `sqlite:///./signal.db`; Render disk: `sqlite:////data/signal.db` |
+| `JWT_SECRET` | Backend | Secret used to create opaque random session tokens; token hashes are stored in SQLite |
+| `CORS_ORIGINS` | Backend | Comma-separated exact web origins, such as `http://localhost:3000` |
+| `UPLOAD_DIR` | Backend | `uploads`; Render disk: `/data/uploads` |
+| `OTP_CODE` | Backend | Mock verification code, defaults to `123456` |
+| `NEXT_PUBLIC_API_URL` | Frontend | API root including `/api/v1` |
+| `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket endpoint; use `wss://` in production |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Client[Next.js client]
+  API[FastAPI API v1]
+  Services[Services]
+  Repos[Repositories]
+  DB[(SQLite)]
+  WS[WebSocket router]
+  Hub[In-memory connection manager]
+  Client -->|Bearer REST| API
+  API --> Services --> Repos --> DB
+  Client <-->|JSON events| WS
+  WS --> Services
+  Services --> Hub
+  Hub -->|per-user sockets| Client
+```
+
+Backend request flow is **API/WebSocket handler → service → repository → model**. Handlers parse inputs and authenticate; services enforce membership, sender ownership, admin roles, idempotency, receipts, and expiry; repositories issue focused database access without embedding policy. Pydantic schemas define request/response boundaries. The frontend keeps network code in `src/lib/` and feature hooks; presentational UI renders props and state rather than opening sockets.
 
 ## Database schema
+
+Primary and foreign keys use UUID strings. Timestamps are UTC datetimes. SQLite connections enable `PRAGMA foreign_keys=ON` and WAL mode.
 
 ```mermaid
 erDiagram
   users ||--o{ auth_sessions : owns
   users ||--o{ contacts : owner
+  users ||--o{ contacts : contact
   users ||--o{ conversation_participants : joins
   conversations ||--o{ conversation_participants : includes
-  conversations ||--o{ messages : contains
   users ||--o{ messages : sends
+  conversations ||--o{ messages : contains
+  messages ||--o{ messages : replies_to
   messages ||--o{ message_receipts : tracks
-  messages ||--o{ message_reactions : receives
-  messages ||--o{ attachments : contains
-  users { string id PK; string phone_number UK; string username UK; string display_name; string about; string avatar_url; string avatar_color; boolean is_online; datetime last_seen_at; datetime created_at }
-  auth_sessions { string id PK; string user_id FK; string token_hash UK; datetime expires_at; datetime revoked_at }
-  contacts { string id PK; string owner_id FK; string contact_user_id FK; boolean is_blocked }
-  conversations { string id PK; string type; string title; string direct_key UK; string created_by FK; datetime last_activity_at }
-  conversation_participants { string id PK; string conversation_id FK; string user_id FK; string role; datetime last_read_at }
-  messages { string id PK; string conversation_id FK; string sender_id FK; string client_message_id; text body; datetime created_at }
-  message_receipts { string id PK; string message_id FK; string user_id FK; string status }
+  users ||--o{ message_receipts : receives
+  messages ||--o{ message_reactions : has
+  users ||--o{ message_reactions : reacts
+  messages ||--o{ attachments : includes
+  users ||--o{ attachments : uploads
+  users {
+    string id PK
+    string phone_number UK
+    string username UK
+    string display_name
+    string about
+    string avatar_url
+    string avatar_color
+    boolean is_online
+    datetime last_seen_at
+    datetime created_at
+  }
+  auth_sessions {
+    string id PK
+    string user_id FK
+    string token_hash UK
+    datetime expires_at
+    datetime revoked_at
+  }
+  otp_challenges {
+    string id PK
+    string identifier
+    string code
+    datetime expires_at
+    datetime consumed_at
+  }
+  contacts {
+    string id PK
+    string owner_id FK
+    string contact_user_id FK
+    string nickname
+    boolean is_blocked
+  }
+  conversations {
+    string id PK
+    string type
+    string direct_key UK
+    string title
+    string description
+    string avatar_url
+    string created_by FK
+    integer disappearing_timer_seconds
+    string last_message_id FK
+    datetime last_activity_at
+  }
+  conversation_participants {
+    string id PK
+    string conversation_id FK
+    string user_id FK
+    string role
+    datetime joined_at
+    datetime left_at
+    string last_read_message_id FK
+    datetime muted_until
+    boolean is_pinned
+    boolean is_archived
+  }
+  messages {
+    string id PK
+    string conversation_id FK
+    string sender_id FK
+    string client_message_id
+    string reply_to_id FK
+    text body
+    string type
+    datetime created_at
+    datetime deleted_at
+    datetime expires_at
+  }
+  message_receipts {
+    string id PK
+    string message_id FK
+    string user_id FK
+    string status
+    datetime delivered_at
+    datetime read_at
+  }
+  message_reactions {
+    string id PK
+    string message_id FK
+    string user_id FK
+    string emoji
+  }
+  attachments {
+    string id PK
+    string message_id FK
+    string uploaded_by FK
+    string file_name
+    string mime_type
+    integer size_bytes
+    string storage_path
+    integer width
+    integer height
+  }
 ```
 
-FK cascades clean up membership/messages/receipts; uniqueness constraints prevent duplicate direct chats, participant membership, receipt rows, and sender idempotency keys. Indexes cover conversation activity, participant lookup, and message history by conversation/time. Timestamp storage uses UTC-aware Python datetimes. The current seed schema includes users, OTP, conversations, participants, messages, and receipts; auth sessions, persistent contacts, reactions, and attachment tables are not yet implemented.
+### Constraints and indexes
 
-## API overview
+- `users` requires at least a phone number or username; both identifiers are unique when present.
+- `contacts` is unique per owner/contact pair and rejects self-contact.
+- `conversations.direct_key` is unique for the sorted pair of users, preventing duplicate direct chats. Conversation type, message type, role, and receipt status are checked against allowed values.
+- `conversation_participants` is unique per conversation/user; `message_receipts` and `message_reactions` are unique per message/user. A sender/client-message key makes sends idempotent.
+- Foreign keys cascade when deleting owned sessions, conversation membership, receipts, reactions, or attachments where appropriate. Messages are soft-deleted for everyone by setting `deleted_at`.
+- Conversation activity is indexed for list ordering. Participant `user_id` supports membership lookup. Message history has a `(conversation_id, created_at DESC)` index; expiry and receipt lookup columns are indexed for background purge and status aggregation.
 
-| Area | Routes |
+## REST API overview
+
+Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP request/verification. Errors use `{ "error": { "code": "...", "message": "..." } }`.
+
+| Area | Endpoints |
 |---|---|
-| Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `GET /auth/me`, `PUT /auth/profile`, `POST /auth/logout` |
-| Users | `GET /users/search`, `PATCH /users/me` |
-| Contacts | `GET /contacts`, `POST /contacts` (starter lookup flow) |
-| Conversations | `GET /conversations`, `POST /conversations/direct`, `GET /conversations/{id}`, `PATCH /conversations/{id}`, `POST /conversations/{id}/read` |
-| Messages | `GET /conversations/{id}/messages`, `POST /conversations/{id}/messages`, `PATCH /messages/{id}` |
-| Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}` |
-| System | `GET /health`, interactive `/docs`, WebSocket `/ws?token=...` |
+| Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `PUT /auth/profile`, `POST /auth/logout`, `GET /auth/me` |
+| Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar` |
+| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block` |
+| Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
+| Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
+| Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
+| Uploads/system | `POST /uploads`, static `/uploads/{path}`, `GET /health`, interactive `/docs` |
 
-## WebSocket events
+Cursor history is returned oldest-to-newest within each page; the UI requests older pages using the first message ID as `before`. Group membership and role checks happen in backend services, not only in the UI.
 
-| Direction | Events |
-|---|---|
-| Client → server | `ping`, `message.send`, `typing.start`, `typing.stop`, `conversation.read` |
-| Server → client | `pong`, `message.new`, `message.ack`, `message.status`, `typing`, `error` |
+## WebSocket protocol
 
-Messages are idempotent on `(sender_id, client_message_id)`. The client renders an optimistic `sending` bubble, then uses the REST result / `message.ack`. Intended state progression: `sending → sent → delivered → read`; initial implementation persists and broadcasts messages and read updates, while delivery aggregation is a simplified scaffold.
+Connect to `/ws?token=<bearer-token>`. Each frame has `{ "type": "event.name", "payload": { ... } }`.
+
+| Direction | Event | Purpose |
+|---|---|---|
+| Client → server | `message.send` | Persist an idempotent message with `client_message_id` |
+| Client → server | `typing.start`, `typing.stop` | Debounced typing state, membership checked and server-throttled |
+| Client → server | `message.delivered` | Acknowledge delivery to a recipient |
+| Client → server | `conversation.read` | Advance read cursor and publish read receipts |
+| Client → server | `reaction.set`, `reaction.remove` | Replace or remove the current user's reaction |
+| Client → server | `ping` | Keep the connection alive; server answers `pong` |
+| Server → client | `message.new`, `message.ack` | Deliver message and acknowledge sender's client ID |
+| Server → client | `message.status` | Per-recipient and aggregate delivery/read update |
+| Server → client | `typing`, `presence` | Typing state and online/last-seen changes |
+| Server → client | `conversation.updated` | Refresh group name/member metadata |
+| Server → client | `reaction.updated`, `message.deleted` | Refresh message reactions or remove expired/deleted message |
+| Server → client | `error`, `pong` | Report invalid event or answer heartbeat |
+
+The connection manager supports multiple sockets per user. First connect marks online and delivers pending receipts; last disconnect records `last_seen_at`. The browser reconnects with exponential backoff and invalidates REST queries to resync.
+
+### Message status state machine
+
+```mermaid
+stateDiagram-v2
+  [*] --> sending: optimistic client render
+  sending --> sent: server persistence / ack
+  sent --> delivered: recipient socket is connected
+  delivered --> read: recipient advances read cursor
+```
+
+For groups, the aggregate remains `sent` while any recipient is pending, becomes `delivered` after every recipient is delivered, and becomes `read` after every recipient reads. A client-only `sending` state is never persisted.
 
 ## Feature checklist
 
-- [x] Mock OTP onboarding and profile name; persistent browser token.
-- [x] Demo seed, direct conversations, message history, REST send, basic WebSocket delivery, group creation and admin-protected member additions.
-- [x] Responsive two-pane messaging shell, search, avatar colors/initials, dark/light toggle, calls placeholder, encryption explanation, settings and logout.
-- [ ] Full contact/block management, membership role editing, receipt aggregation and presence fanout.
-- [ ] Uploads, reactions, reply quoting, disappearing-message purge, typing expiry, full keyboard shortcuts and production reconnect/resync.
-- [ ] Extract all UI/state/API/model layers into the prescribed individual component and service files; current UI intentionally prioritizes a compact working demo.
+- [x] Welcome, fixed-code registration, profile/avatar onboarding, persisted session validation, logout.
+- [x] Conversation list/search, contacts, direct chats, group creation and role-managed membership.
+- [x] Realtime two-way messages, optimistic sending, idempotency, receipts, read cursors, typing, presence, reconnect/resync.
+- [x] Pagination, date dividers, grouped bubbles, replies, reactions, attachments/image preview, disappearing-message purge/timer UI.
+- [x] Privacy/notification/appearance settings, persistent light/dark preference, responsive single-pane mobile chat, keyboard shortcuts, accessibility focus handling.
+- [x] Backend layering, SQLite indexes/constraints, startup seed, legacy SQLite upgrades, REST/WebSocket tests, live two-account smoke script, Render/Vercel config, CI.
 
-## Assumptions and simulated behavior
+## Assumptions and simulated parts
 
-- The OTP is fixed to `123456`; this is a local demonstration flow, not phone verification.
-- The bearer token is an opaque demo token encoded as `demo-<user id>` for transparent local auth. Configure a real secret and replace this with signed/hashed sessions before real deployment.
-- Encryption is represented by a user-facing explanation only. No cryptography, calls, Stories, or linked devices are implemented.
-- Seed generation runs only when the users table is empty. SQLite and the in-memory WebSocket hub target a single backend process.
-- The first two seeded phone accounts let evaluators open two browser profiles and exchange messages.
+- OTP is always the configured mock code (default `123456`); no SMS provider is contacted.
+- Session tokens are random opaque bearer values stored as SHA-256 hashes with expiry/revocation; they are not JWTs. This keeps session validation explicit for both REST and WebSockets.
+- “End-to-end encrypted” is UI copy only. There is no cryptographic message encryption or key exchange.
+- Calls, Stories, and linked devices are “Coming Soon” placeholders. Notifications are in-app toasts; there is no push service.
+- Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured local upload directory.
+- SQLite and the WebSocket connection manager are single-instance choices. A multi-instance deployment would need a shared database and pub/sub connection broker.
+- Seed data runs only for an empty users table. The development OTP and demo accounts are intentionally predictable.
 
 ## Deployment
 
-Frontend can be deployed to Vercel; backend uses `render.yaml` and Docker. Set production `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` (`wss://.../ws`), and set backend `CORS_ORIGINS` to the Vercel origin. Attach a Render persistent disk at `/data` and use `DATABASE_URL=sqlite:////data/signal.db`; otherwise an ephemeral deployment resets its database. A production deployment should replace the demo auth token, use TLS, and review upload limits and multi-worker WebSocket fanout.
+See [DEPLOY.md](DEPLOY.md) for click-by-click GitHub → Render → Vercel steps. Render mounts a persistent disk at `/data` and uses `DATABASE_URL=sqlite:////data/signal.db`; without a persistent disk SQLite resets with an ephemeral deploy. Vercel must set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` at build time. The backend `CORS_ORIGINS` must contain the exact Vercel origin. Production WebSockets use `wss://`.
+
+## Tests and verification
+
+Backend tests use an in-memory SQLite database with `StaticPool`, dependency overrides, and `TESTING=1` so lifespan seed/background tasks do not run in tests:
+
+```powershell
+cd backend
+python -m pytest -x -q
+```
+
+Frontend checks:
+
+```powershell
+cd frontend
+npm ci
+npm run format:check
+npm run lint
+npm run typecheck
+npm run build
+```
+
+The live local smoke script exercises both demo accounts over HTTP and WebSockets. Start the backend first, then run `python scripts/smoke_e2e.py`. For post-restart checks, use `--verify-conversation`, `--verify-message`, and `--verify-group` with the IDs printed by the first run. GitHub Actions runs backend pytest and frontend install, formatting, lint, typecheck, and build on pushes and pull requests.
 
 ## Known limitations
 
-This is a functional foundation and messaging demo rather than a full Signal replacement. It does not provide E2E encryption, actual phone OTP, auth-session revocation, upload storage, reactions, edit/delete-for-everyone semantics, complete contact CRUD, full typing/presence behavior, attachment delivery, or disappearing-message cleanup. Group member additions enforce the admin rule server-side; removal supports self-leave or admin removal. Keep it on trusted development environments until authentication is upgraded.
+- One SQLite file and one in-memory WebSocket hub serve a single process; horizontal scaling and cross-device delivery need shared infrastructure.
+- Upload checks enforce type and size, but files are not scanned and media storage is local/disk-backed.
+- The mock OTP, simulated encryption, and demo seed make this a learning/evaluation project, not a production private messenger.
