@@ -20,8 +20,8 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 16. [x] Pixel polish and accessibility pass against specified tokens and layout.
 17. [x] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
 18. [x] Finalize Render/Vercel config and write beginner deployment guide.
-19. [ ] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
-20. [ ] Add plain-language module explanations and 15 interview questions/answers.
+19. [x] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
+20. [x] Add plain-language module explanations and 15 interview questions/answers.
 21. [ ] Final lint, typecheck, backend tests, frontend build, smoke checks; remove dead code and record each verification truthfully.
 
 ## Verification log
@@ -47,3 +47,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 18: Render Blueprint now uses the Docker FastAPI service, `/health`, persistent `/data` disk, SQLite URL, generated JWT secret, persisted uploads, OTP config, and editable CORS origin. Vercel config lives under the frontend project root. `DEPLOY.md` gives click-by-click GitHub, Render, Vercel, variables, and verification steps. YAML and Vercel JSON parse checks passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.
+- Item 19: Replaced the stale first-pass README with setup, architecture/layering, Mermaid ER, schema rationale, REST and WebSocket tables, status machine, feature mapping, assumptions, deployment, tests, and limitations. Endpoint names and demo credentials were reviewed against the implementation.
+- Item 20: Added `INTERVIEW_NOTES.md` with plain-language explanations of the implemented manager, services, receipt model, auth, optimistic UI, client stores, schema choices, and 15 interview questions with answers.
+- Follow-up route fix: removed the duplicate standalone `/` page that always redirected to welcome. The authenticated `(app)` route now owns `/`, so the app guard and its session check control landing after onboarding. `npm run lint`, `npm run build`, and `npm run typecheck` passed after Next regenerated its route types.
