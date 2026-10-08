@@ -27,6 +27,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     const data = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string };
     } | null;
+    if (response.status === 401 && token) useAuthStore.getState().clearSession();
     throw new ApiError(
       data?.error?.message ?? 'The request could not be completed.',
       response.status,
@@ -35,6 +36,20 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
+}
+
+export async function fetchMedia(path: string, signal: AbortSignal): Promise<Blob> {
+  const token = useAuthStore.getState().token;
+  const url = path.startsWith('/api/v1/') ? `${API_ORIGIN}${path}` : `${API_BASE_URL}${path}`;
+  const response = await fetch(url, {
+    signal,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) {
+    if (response.status === 401 && token) useAuthStore.getState().clearSession();
+    throw new ApiError('Media could not be loaded.', response.status, 'MEDIA_ERROR');
+  }
+  return response.blob();
 }
 
 export function mediaUrl(path: string): string {

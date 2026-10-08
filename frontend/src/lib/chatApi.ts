@@ -84,6 +84,11 @@ export const contactApi = {
     }),
   remove: (id: string) => apiRequest(`/contacts/${id}`, { method: 'DELETE' }),
   block: (id: string) => apiRequest(`/contacts/${id}/block`, { method: 'POST' }),
+  setBlocked: (userId: string, isBlocked: boolean) =>
+    apiRequest<{ is_blocked: boolean }>(`/contacts/users/${userId}/block`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_blocked: isBlocked }),
+    }),
   search: (query: string) => apiRequest<User[]>(`/users/search?q=${encodeURIComponent(query)}`),
 };
 

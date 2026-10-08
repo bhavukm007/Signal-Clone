@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { BlockUserControl } from '@/components/contacts/BlockUserControl';
 export function NewChatModal() {
   const modal = useUiStore((s) => s.modal);
   const close = () => useUiStore.getState().openModal(null);
@@ -117,20 +118,26 @@ export function NewChatModal() {
       />
       <div className="modal-list">
         {contacts.map((c) => (
-          <button className="contact-row" key={c.id} onClick={() => void start(c.user.id)}>
-            <Avatar name={c.user.display_name} color={c.user.avatar_color} />
-            <span>{c.nickname || c.user.display_name}</span>
-          </button>
+          <div className="contact-row" key={c.id}>
+            <button className="contact-start" onClick={() => void start(c.user.id)}>
+              <Avatar name={c.user.display_name} color={c.user.avatar_color} />
+              <span>{c.nickname || c.user.display_name}</span>
+            </button>
+            <BlockUserControl userId={c.user.id} />
+          </div>
         ))}
         {users
           .filter((u) => !contacts.some((c) => c.user.id === u.id))
           .map((u) => (
-            <button className="contact-row" key={u.id} onClick={() => void start(u.id)}>
-              <Avatar name={u.display_name} color={u.avatar_color} />
-              <span>
-                {u.display_name} · {u.phone_number || u.username}
-              </span>
-            </button>
+            <div className="contact-row" key={u.id}>
+              <button className="contact-start" onClick={() => void start(u.id)}>
+                <Avatar name={u.display_name} color={u.avatar_color} />
+                <span>
+                  {u.display_name} · {u.phone_number || u.username}
+                </span>
+              </button>
+              <BlockUserControl userId={u.id} />
+            </div>
           ))}
       </div>
       <Button onClick={() => useUiStore.getState().openModal('add-contact')}>Add contact</Button>

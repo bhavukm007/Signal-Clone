@@ -18,7 +18,6 @@ import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
-import { mediaUrl } from '@/lib/api';
 import { dayLabel, fullTime } from '@/lib/formatters';
 import { useMessageActions } from '@/hooks/useMessageActions';
 import { useTyping } from '@/hooks/useTyping';
@@ -29,17 +28,30 @@ import { useAuthStore } from '@/store/authStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import type { Attachment } from '@/types/models';
+import { AuthenticatedAttachment } from '@/components/chat/AuthenticatedAttachment';
+import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
 
 export function ChatView() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const sendEvent = useWebSocket();
-  const { data: conversation } = useConversationDetails(conversationId);
-  const { messages, loading, sendMessage, loadPrevious, hasPrevious } = useMessages(
-    conversationId,
-    sendEvent,
-  );
+  const conversationQuery = useConversationDetails(conversationId);
+  const {
+    data: conversation,
+    isLoading: conversationLoading,
+    error: conversationError,
+    refetch: retryConversation,
+  } = conversationQuery;
+  const {
+    messages,
+    loading,
+    error: messageError,
+    retryMessages,
+    sendMessage,
+    loadPrevious,
+    hasPrevious,
+  } = useMessages(conversationId, sendEvent);
   const { react, removeReaction, upload } = useMessageActions(conversationId);
   const typingIds = useChatStore(
     (s) => s.typingByConversation[conversationId] ?? EMPTY_TYPING_LIST,
@@ -51,6 +63,7 @@ export function ChatView() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const lightboxUrl = useMediaObjectUrl(lightbox);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const bottom = useRef<HTMLDivElement>(null);
@@ -84,7 +97,15 @@ export function ChatView() {
     },
     [hasPrevious, loading, loadPrevious],
   );
-  if (!conversation) return <div className="loading-screen">Loading conversation…</div>;
+  if (conversationLoading) return <div className="loading-screen">Loading conversation…</div>;
+  if (conversationError || !conversation)
+    return (
+      <div className="error-state" role="alert">
+        <p>{conversationError ? 'Conversation could not be loaded.' : 'Conversation not found.'}</p>
+        <button onClick={() => void retryConversation()}>Retry</button>
+      </div>
+    );
+  const blocked = conversation.is_blocked_by_me || conversation.is_blocked_by_peer;
   const participants = conversation.participants.map((item) => item.user);
   const peer = participants.find((item) => item.id !== user?.id);
   const title = conversation.title || peer?.display_name || 'Conversation';
@@ -174,6 +195,12 @@ export function ChatView() {
           Learn more
         </button>
       </div>
+      {blocked && (
+        <div className="blocked-banner" role="status">
+          Blocked{conversation.is_blocked_by_peer ? ' by this contact' : ''}. Messages and presence
+          are paused.
+        </div>
+      )}
       {searchOpen && (
         <label className="message-search">
           <Search size={16} />
@@ -197,6 +224,12 @@ export function ChatView() {
       )}
       <div className="message-list" ref={scroll} onScroll={onScroll}>
         {loading && <p className="inline-loading">Loading messages…</p>}
+        {messageError && (
+          <div className="error-state" role="alert">
+            <p>Messages could not be loaded.</p>
+            <button onClick={() => void retryMessages()}>Retry</button>
+          </div>
+        )}
         {visibleMessages.map((message, index) => {
           const prior = visibleMessages[index - 1];
           const grouped =
@@ -243,34 +276,13 @@ export function ChatView() {
                       </button>
                     )}
                     <div id={`message-${message.id}`}>{message.body}</div>
-                    {message.attachments.map((a) =>
-                      a.mime_type.startsWith('image/') ? (
-                        <button
-                          className="image-attachment"
-                          key={a.id}
-                          onClick={() => setLightbox(mediaUrl(a.url))}
-                        >
-                          <Image
-                            src={mediaUrl(a.url)}
-                            alt={a.file_name}
-                            width={360}
-                            height={240}
-                            unoptimized
-                          />
-                          <span>{a.file_name}</span>
-                        </button>
-                      ) : (
-                        <a
-                          className="file-attachment"
-                          key={a.id}
-                          href={mediaUrl(a.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          📎 {a.file_name}
-                        </a>
-                      ),
-                    )}
+                    {message.attachments.map((attachment) => (
+                      <AuthenticatedAttachment
+                        key={attachment.id}
+                        attachment={attachment}
+                        onPreview={setLightbox}
+                      />
+                    ))}
                     <footer>
                       <time title={fullTime(message.created_at)}>
                         {fullTime(message.created_at)}
@@ -388,6 +400,7 @@ export function ChatView() {
             value={draft}
             placeholder="Write a message…"
             rows={1}
+            disabled={blocked}
             onChange={(e) => {
               setDraft(e.target.value);
               typing(e.target.value);
@@ -418,16 +431,16 @@ export function ChatView() {
             className="send-button"
             aria-label="Send"
             onClick={submit}
-            disabled={!draft.trim() && !pendingAttachments.length}
+            disabled={blocked || (!draft.trim() && !pendingAttachments.length)}
           >
             <Send size={18} />
           </button>
         </div>
       </div>
-      {lightbox && (
+      {lightbox && lightboxUrl && (
         <Modal title="Image preview" onClose={() => setLightbox(null)}>
           <Image
-            src={lightbox}
+            src={lightboxUrl}
             alt="Attachment preview"
             width={960}
             height={720}

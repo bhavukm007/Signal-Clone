@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { initials } from '@/lib/formatters';
-import { mediaUrl } from '@/lib/api';
+import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
 import type { User } from '@/types/models';
 
 interface AvatarProps {
@@ -18,7 +18,7 @@ export function Avatar({
   size = 'normal',
   online = false,
 }: AvatarProps) {
-  const image = imageUrl ? mediaUrl(imageUrl) : null;
+  const image = useMediaObjectUrl(imageUrl);
   return (
     <span
       className={`avatar ${size}`}

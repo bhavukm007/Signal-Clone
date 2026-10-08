@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src --ext .ts,.tsx",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" package.json next.config.js tsconfig.json",
+    "test:e2e": "playwright test",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"e2e/**/*.ts\" package.json next.config.js playwright.config.ts tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.6",
     "@tanstack/react-query": "^5.83.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.468.0",
@@ -20,6 +22,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/node": "^22.15.30",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",

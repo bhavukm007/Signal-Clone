@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { authApi } from '../../../lib/auth';
 import { useAuthStore } from '../../../store/authStore';
 import { useUiStore } from '../../../store/uiStore';
@@ -59,6 +60,13 @@ export default function Settings() {
   return (
     <section className="settings-page">
       <header>
+        <button
+          className="settings-back"
+          aria-label="Back to chats"
+          onClick={() => router.push('/')}
+        >
+          <ArrowLeft size={18} />
+        </button>
         <h1>Settings</h1>
       </header>
       <section className="settings-section">

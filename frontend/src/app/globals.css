@@ -1,3 +1,4 @@
+@import '@fontsource-variable/inter';
 @import '../styles/signal-theme.css';
 @tailwind base;
 @tailwind components;
@@ -15,7 +16,7 @@ body {
   background: var(--signal-app);
   color: var(--signal-text);
   font:
-    14px Inter,
+    14px 'Inter Variable',
     system-ui,
     sans-serif;
 }
@@ -40,8 +41,8 @@ a {
 }
 .sidebar {
   display: flex;
-  width: 440px;
-  min-width: 340px;
+  width: 404px;
+  min-width: 404px;
   border-right: 1px solid var(--signal-divider);
 }
 .nav-rail {
@@ -203,6 +204,18 @@ a {
 .app-main {
   flex: 1;
   min-width: 0;
+}
+.reconnecting-banner {
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 16px;
+  padding: 6px 14px;
+  color: var(--signal-text);
+  background: var(--signal-selected);
+  box-shadow: 0 2px 8px #0002;
 }
 .empty-state {
   height: 100%;
@@ -543,6 +556,29 @@ a {
 .contact-row:hover {
   background: var(--signal-selected);
 }
+.contact-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.contact-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+.blocked-banner {
+  padding: 8px 16px;
+  color: var(--signal-muted);
+  background: var(--signal-selected);
+  text-align: center;
+}
 .primary-button,
 .secondary-button {
   display: inline-flex;
@@ -648,6 +684,9 @@ a {
 .settings-page > header {
   border-bottom: 1px solid var(--signal-divider);
 }
+.settings-back {
+  display: none;
+}
 .settings-profile {
   display: flex;
   align-items: center;
@@ -709,7 +748,14 @@ a {
   padding: 30px;
   color: #d94444;
 }
-@media (max-width: 760px) {
+.error-state button {
+  border: 0;
+  border-radius: 16px;
+  padding: 7px 12px;
+  color: white;
+  background: var(--signal-blue);
+}
+@media (max-width: 900px) {
   .sidebar {
     width: 100%;
     min-width: 0;
@@ -731,8 +777,29 @@ a {
     display: block;
     width: 100%;
   }
+  .app-shell:has(.settings-page) .sidebar {
+    display: none;
+  }
+  .app-shell:has(.settings-page) .app-main {
+    display: block;
+    width: 100%;
+  }
   .mobile-back {
     display: grid;
+  }
+  .settings-page > header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .settings-back {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--signal-selected);
   }
   .chat-header {
     padding: 0 8px;

@@ -9,11 +9,13 @@ import { Sidebar } from './Sidebar';
 import { NewChatModal } from '@/components/conversations/NewChatModal';
 import { GroupInfoPanel } from '@/components/groups/GroupInfoPanel';
 import { useChatStore } from '@/store/chatStore';
+import { usePresenceStore } from '@/store/presenceStore';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { token, user, hydrated, setUser } = useAuthStore();
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const connectionStatus = usePresenceStore((state) => state.connectionStatus);
   const [validatedToken, setValidatedToken] = useState<string | null>(null);
   useEffect(() => {
     if (!hydrated) return;
@@ -44,7 +46,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <WebSocketProvider>
       <div className="app-shell">
         <Sidebar />
-        <main className="app-main">{children}</main>
+        <main className="app-main">
+          {connectionStatus === 'reconnecting' && (
+            <div className="reconnecting-banner" role="status">
+              Reconnecting…
+            </div>
+          )}
+          {children}
+        </main>
       </div>
       <NewChatModal />
       {activeConversationId && <GroupInfoPanel conversationId={activeConversationId} />}

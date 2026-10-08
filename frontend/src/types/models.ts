@@ -21,6 +21,15 @@ export interface Attachment {
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type MessageType = 'text' | 'image' | 'file' | 'system';
 
+export interface MessagePreview {
+  id: string;
+  sender_id: string;
+  sender: User;
+  body: string;
+  type: MessageType;
+  created_at: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -46,7 +55,7 @@ export interface Conversation {
   title: string;
   description?: string | null;
   participants: User[];
-  last_message: Message | null;
+  last_message: MessagePreview | null;
   last_activity_at: string;
   unread_count: number;
   is_pinned: boolean;
@@ -59,6 +68,8 @@ export interface Conversation {
 
 export interface ConversationDetail extends Omit<Conversation, 'participants'> {
   participants: Array<{ user: User; role: 'admin' | 'member' }>;
+  is_blocked_by_me?: boolean;
+  is_blocked_by_peer?: boolean;
 }
 
 export interface Contact {

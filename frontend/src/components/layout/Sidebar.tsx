@@ -25,8 +25,12 @@ export function Sidebar() {
   const searchRef = useRef<HTMLInputElement>(null);
   const query = useUiStore((s) => s.searchQuery);
   const term = useDebounce(query, 250);
-  const { data: conversations = [], isLoading, error } = useConversations();
-  const { data: people = [] } = useQuery({
+  const { data: conversations = [], isLoading, error, refetch } = useConversations();
+  const {
+    data: people = [],
+    error: peopleError,
+    refetch: retryPeople,
+  } = useQuery({
     queryKey: ['sidebar-people', term],
     queryFn: () => contactApi.search(term),
     enabled: term.trim().length > 1,
@@ -87,7 +91,12 @@ export function Sidebar() {
         <SearchBar inputRef={searchRef} />
         <div className="conversation-list">
           {isLoading && <p className="inline-loading">Loading chats…</p>}
-          {error && <p className="error-state">Chats could not be loaded.</p>}
+          {error && (
+            <div className="error-state" role="alert">
+              <p>Chats could not be loaded.</p>
+              <button onClick={() => void refetch()}>Retry</button>
+            </div>
+          )}
           {!isLoading && !error && conversations.length === 0 && (
             <p className="inline-loading">No conversations yet. Start a new chat.</p>
           )}
@@ -116,6 +125,12 @@ export function Sidebar() {
                 </button>
               ))}
             </>
+          )}
+          {term.length > 1 && peopleError && (
+            <div className="error-state" role="alert">
+              <p>People could not be searched.</p>
+              <button onClick={() => void retryPeople()}>Retry search</button>
+            </div>
           )}
         </div>
         <button className="compose-fab" aria-label="Compose" onClick={open}>

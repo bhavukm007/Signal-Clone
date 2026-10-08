@@ -15,6 +15,10 @@ export class WsClient {
     private readonly token: string,
     private readonly onEvent: WsEventHandler,
     private readonly onReconnect: () => void,
+    private readonly onConnectionState: (
+      state: 'connected' | 'reconnecting' | 'disconnected',
+    ) => void,
+    private readonly onUnauthorized: () => void,
   ) {}
 
   connect(): void {
@@ -34,6 +38,7 @@ export class WsClient {
     if (this.heartbeatTimer !== null) window.clearInterval(this.heartbeatTimer);
     this.socket?.close();
     this.socket = null;
+    this.onConnectionState('disconnected');
   }
 
   private open(): void {
@@ -45,6 +50,7 @@ export class WsClient {
       this.attempt = 0;
       if (this.connectedOnce) this.onReconnect();
       this.connectedOnce = true;
+      this.onConnectionState('connected');
       this.heartbeatTimer = window.setInterval(() => this.send('ping', {}), 25000);
     };
     socket.onmessage = (message) => {
@@ -55,9 +61,16 @@ export class WsClient {
         // Invalid frames are ignored; the next REST sync will reconcile state.
       }
     };
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (this.heartbeatTimer !== null) window.clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+      if (event.code === 4401) {
+        this.stopped = true;
+        this.onConnectionState('disconnected');
+        this.onUnauthorized();
+        return;
+      }
+      this.onConnectionState('reconnecting');
       this.scheduleReconnect();
     };
     socket.onerror = () => socket.close();

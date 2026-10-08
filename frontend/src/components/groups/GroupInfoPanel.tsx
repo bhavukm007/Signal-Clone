@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { BlockUserControl } from '@/components/contacts/BlockUserControl';
 
 export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
   const open = useUiStore((state) => state.modal === 'conversation-info');
@@ -210,9 +211,19 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
         </>
       )}
       {conversation.type === 'direct' && (
-        <p className="safety-note">
-          🔒 Messages are end-to-end encrypted. Safety number verification is a demo placeholder.
-        </p>
+        <>
+          <p className="safety-note">
+            🔒 Messages are end-to-end encrypted. Safety number verification is a demo placeholder.
+          </p>
+          {conversation.participants
+            .filter(({ user }) => user.id !== viewer?.id)
+            .map(({ user }) => (
+              <div className="contact-menu-row" key={user.id}>
+                <span>Contact privacy</span>
+                <BlockUserControl userId={user.id} />
+              </div>
+            ))}
+        </>
       )}
     </Modal>
   );

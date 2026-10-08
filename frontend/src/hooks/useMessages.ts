@@ -97,6 +97,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
     messages: uniqueMessages,
     loading: query.isLoading,
     error: query.error,
+    retryMessages: query.refetch,
     hasPrevious: query.hasNextPage,
     loadPrevious: query.fetchNextPage,
     sending: send.isPending,

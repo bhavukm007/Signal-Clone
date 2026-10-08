@@ -43,6 +43,10 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
     chat.updateMessageStatus(status.message_id, status.aggregate_status);
   } else if (frame.type === 'message.deleted') {
     chat.removeMessage(String(payload.message_id));
+    const conversationId = String(payload.conversation_id ?? '');
+    if (conversationId)
+      void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] });
   } else if (frame.type === 'typing') {
     const typing = payload as { conversation_id: string; user_id: string; is_typing: boolean };
     const key = `${typing.conversation_id}:${typing.user_id}`;
@@ -90,6 +94,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
               const active = useChatStore.getState().activeConversationId;
               if (active) void queryClient.invalidateQueries({ queryKey: ['messages', active] });
             },
+            (state) => usePresenceStore.getState().setConnectionStatus(state),
+            () => useAuthStore.getState().clearSession(),
           )
         : null,
     [token, queryClient],

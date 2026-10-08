@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+let toastTimer: number | null = null;
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 interface UiState {
   theme: ThemeMode;
@@ -21,10 +23,18 @@ export const useUiStore = create<UiState>()(
       toast: null,
       setTheme: (theme) => set({ theme }),
       notify: (message) => {
+        if (toastTimer !== null) window.clearTimeout(toastTimer);
         set({ toast: message });
-        window.setTimeout(() => set({ toast: null }), 3000);
+        toastTimer = window.setTimeout(() => {
+          toastTimer = null;
+          set({ toast: null });
+        }, 3000);
       },
-      clearToast: () => set({ toast: null }),
+      clearToast: () => {
+        if (toastTimer !== null) window.clearTimeout(toastTimer);
+        toastTimer = null;
+        set({ toast: null });
+      },
       searchQuery: '',
       modal: null,
       setSearchQuery: (searchQuery) => set({ searchQuery }),
