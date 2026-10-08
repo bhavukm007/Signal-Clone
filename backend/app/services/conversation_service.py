@@ -9,7 +9,7 @@ from app.models.message import Message
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
 from app.services.message_service import serialize_message
-from app.schemas.conversation import ConversationPatch, DirectCreate, GroupCreate
+from app.schemas.conversation import ConversationPatch, DirectCreate
 
 
 def require_member(db: Session, conversation_id: str, user_id: str) -> Participant:
@@ -121,19 +121,3 @@ def detail(db: Session, user: User, conversation_id: str) -> dict[str, object]:
     }
 
 
-def create_group(db: Session, creator: User, body: GroupCreate) -> Conversation:
-    conversation = Conversation(
-        type='group', title=body.name, description=body.description, created_by=creator.id
-    )
-    db.add(conversation)
-    db.flush()
-    db.add(Participant(conversation_id=conversation.id, user_id=creator.id, role='admin'))
-    for member_id in set(body.member_ids):
-        if member_id == creator.id:
-            continue
-        if user_repository.by_id(db, member_id) is None:
-            raise HTTPException(status_code=404, detail=f'User {member_id} not found')
-        db.add(Participant(conversation_id=conversation.id, user_id=member_id))
-    db.commit()
-    db.refresh(conversation)
-    return conversation

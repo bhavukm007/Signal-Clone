@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -41,6 +42,29 @@ def create_message(db: Session, conversation_id: str, sender: User, body: Messag
     for recipient in conversation_repository.participants(db, conversation_id):
         if recipient.user_id != sender.id:
             db.add(Receipt(message_id=message.id, user_id=recipient.user_id, status='sent'))
+    db.commit()
+    db.refresh(message)
+    return message
+
+
+def create_system_message(db: Session, conversation_id: str, actor: User, body: str) -> Message:
+    conversation = conversation_repository.by_id(db, conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail='Conversation not found')
+    message = Message(
+        conversation_id=conversation_id,
+        sender_id=actor.id,
+        body=body,
+        type='system',
+        client_message_id=f'system-{uuid4()}',
+    )
+    db.add(message)
+    db.flush()
+    conversation.last_message_id = message.id
+    conversation.last_activity_at = message.created_at
+    for participant in conversation_repository.participants(db, conversation_id):
+        if participant.user_id != actor.id:
+            db.add(Receipt(message_id=message.id, user_id=participant.user_id, status='sent'))
     db.commit()
     db.refresh(message)
     return message

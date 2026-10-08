@@ -18,6 +18,15 @@ def membership(db: Session, conversation_id: str, user_id: str) -> Participant |
     )
 
 
+def membership_any(db: Session, conversation_id: str, user_id: str) -> Participant | None:
+    return db.scalar(
+        select(Participant).where(
+            Participant.conversation_id == conversation_id,
+            Participant.user_id == user_id,
+        )
+    )
+
+
 def participants(db: Session, conversation_id: str) -> list[Participant]:
     return list(
         db.scalars(

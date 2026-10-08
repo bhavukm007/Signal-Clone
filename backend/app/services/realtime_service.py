@@ -19,14 +19,19 @@ async def broadcast_conversation(
     await manager.send_many(user_ids, event.value, payload, excluded_user_id)
 
 
-async def publish_message(db: Session, message: Message, sender_id: str) -> None:
+async def publish_message(
+    db: Session,
+    message: Message,
+    sender_id: str,
+    include_sender: bool = False,
+) -> None:
     serialized = message_service.serialize_message(db, message)
     await broadcast_conversation(
         db,
         message.conversation_id,
         EventType.MESSAGE_NEW,
         {'message': serialized, 'conversation_id': message.conversation_id},
-        excluded_user_id=sender_id,
+        excluded_user_id=None if include_sender else sender_id,
     )
     recipients = conversation_repository.participants(db, message.conversation_id)
     for recipient in recipients:
