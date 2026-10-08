@@ -1,9 +1,9 @@
 import { apiRequest } from '@/lib/api';
-import type { Attachment, Contact, Conversation, Message, User } from '@/types/models';
+import type { Attachment, Contact, Conversation, ConversationDetail, Message, User } from '@/types/models';
 
 export const conversationApi = {
   list: (query = '') => apiRequest<Conversation[]>(`/conversations${query ? `?q=${encodeURIComponent(query)}` : ''}`),
-  details: (id: string) => apiRequest<Conversation>(`/conversations/${id}`),
+  details: (id: string) => apiRequest<ConversationDetail>(`/conversations/${id}`),
   direct: (user_id: string) => apiRequest<{ id: string; type: 'direct' }>('/conversations/direct', {
     method: 'POST', body: JSON.stringify({ user_id }),
   }),

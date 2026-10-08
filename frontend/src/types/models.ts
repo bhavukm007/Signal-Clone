@@ -57,6 +57,10 @@ export interface Conversation {
   disappearing_timer_seconds?: number | null;
 }
 
+export interface ConversationDetail extends Omit<Conversation, 'participants'> {
+  participants: Array<{ user: User; role: 'admin' | 'member' }>;
+}
+
 export interface Contact {
   id: string;
   user: User;
