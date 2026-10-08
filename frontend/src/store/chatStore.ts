@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { Message } from '@/types/models';
 
+export const EMPTY_MESSAGE_LIST: Message[] = [];
+export const EMPTY_TYPING_LIST: string[] = [];
+
 interface ChatState {
   activeConversationId: string | null;
   messagesByConversation: Record<string, Message[]>;

@@ -22,7 +22,7 @@ import { mediaUrl } from '@/lib/api';
 import { dayLabel, fullTime } from '@/lib/formatters';
 import { useMessageActions } from '@/hooks/useMessageActions';
 import { useTyping } from '@/hooks/useTyping';
-import { useChatStore } from '@/store/chatStore';
+import { EMPTY_TYPING_LIST, useChatStore } from '@/store/chatStore';
 import { useUiStore } from '@/store/uiStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
@@ -41,7 +41,9 @@ export function ChatView() {
     sendEvent,
   );
   const { react, removeReaction, upload } = useMessageActions(conversationId);
-  const typingIds = useChatStore((s) => s.typingByConversation[conversationId] ?? []);
+  const typingIds = useChatStore(
+    (s) => s.typingByConversation[conversationId] ?? EMPTY_TYPING_LIST,
+  );
   const presence = usePresenceStore((s) => s.onlineUserIds);
   const [draft, setDraft] = useState('');
   const [reply, setReply] = useState<string | null>(null);

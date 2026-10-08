@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messageApi } from '@/lib/chatApi';
 import { useAuthStore } from '@/store/authStore';
-import { useChatStore } from '@/store/chatStore';
+import { EMPTY_MESSAGE_LIST, useChatStore } from '@/store/chatStore';
 import { useUiStore } from '@/store/uiStore';
 import type { Message } from '@/types/models';
 import type { SendEvent } from '@/hooks/useWebSocket';
@@ -11,7 +11,9 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const storeMessages = useChatStore((state) => state.messagesByConversation[conversationId] ?? []);
+  const storeMessages = useChatStore(
+    (state) => state.messagesByConversation[conversationId] ?? EMPTY_MESSAGE_LIST,
+  );
   const setMessages = useChatStore((state) => state.setMessages);
   const addMessage = useChatStore((state) => state.addMessage);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
@@ -77,7 +79,9 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   }, [history, storeMessages]);
 
   useEffect(() => {
-    const latestId = uniqueMessages.at(-1)?.id;
+    const latestId = [...uniqueMessages]
+      .reverse()
+      .find((message) => message.sender_id !== user?.id && !message.optimistic)?.id;
     if (!latestId || !readReceipts || latestId === lastReadId.current) return;
     lastReadId.current = latestId;
     void messageApi
@@ -87,7 +91,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
       conversation_id: conversationId,
       up_to_message_id: latestId,
     });
-  }, [conversationId, uniqueMessages, sendEvent, readReceipts, queryClient]);
+  }, [conversationId, uniqueMessages, sendEvent, readReceipts, queryClient, user?.id]);
 
   return {
     messages: uniqueMessages,
