@@ -14,7 +14,7 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 | Uploads | API size/type/signature checks, randomized static storage, attachment ownership/linking, and avatar endpoint are implemented and covered by TestClient | Frontend composer preview/lightbox remains in item 15 |
 | Disappearing messages | Timer applies to new messages; non-blocking lifespan worker commits soft deletes and broadcasts `message.deleted`; TestClient covers purge behavior | Frontend timer controls/state remain in item 15 |
 | Seed | Idempotent startup/CLI seed creates 10 users, 60 contact links, 9 DMs × 18 messages, 3 groups × 16 messages, varied receipt states, reactions/replies, unread/pinned/muted/disappearing state; test checks counts and repeat call | Complete |
-| Frontend | Items 9–13 add onboarding, searchable/composeable chats, paginated realtime messaging, and group creation/member administration | Settings polish, disappearing timer controls, attachments preview/lightbox, and remaining accessibility/pixel polish in items 14–16 |
+| Frontend | Items 9–14 add onboarding, searchable chats, realtime messaging, group administration, editable settings, persisted preferences/themes, and toasts | Disappearing timer controls, attachment preview/lightbox, emoji/reaction affordances, and pixel/accessibility pass in items 15–16 |
 | Deployment/docs | Basic Docker/Render/Vercel manifests exist | CI, complete beginner deploy guide, final README, interview notes, smoke run |
 
 ## Verification constraints

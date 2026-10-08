@@ -4,6 +4,8 @@ import { WS_URL } from '@/lib/constants';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { usePresenceStore } from '@/store/presenceStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { useUiStore } from '@/store/uiStore';
 import { WsClient } from '@/lib/ws';
 import type { Message } from '@/types/models';
 import type { WsFrame } from '@/types/ws';
@@ -18,6 +20,11 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
   if (frame.type === 'message.new') {
     const data = payload as { message: Message };
     chat.addMessage(data.message);
+    const currentUserId = useAuthStore.getState().user?.id;
+    const notificationsEnabled = usePreferencesStore.getState().messageNotifications;
+    if (notificationsEnabled && data.message.sender_id !== currentUserId && chat.activeConversationId !== data.message.conversation_id) {
+      useUiStore.getState().notify(`${data.message.sender.display_name}: ${data.message.body || 'Sent an attachment'}`);
+    }
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     void queryClient.invalidateQueries({ queryKey: ['messages', data.message.conversation_id] });
   } else if (frame.type === 'message.ack') {
@@ -46,6 +53,8 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
   } else if (frame.type === 'conversation.updated') {
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    const conversationId = String(payload.conversation_id ?? '');
+    if (conversationId) void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
   } else if (frame.type === 'reaction.updated') {
     void queryClient.invalidateQueries({ queryKey: ['messages'] });
   } else if (frame.type === 'error') {

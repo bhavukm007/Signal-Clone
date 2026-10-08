@@ -15,7 +15,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 11. [x] Complete conversation list, debounced conversation/contact search, compose flows, unread/pin/mute/presence states.
 12. [x] Complete chat view: realtime, grouped/date-separated messages, receipts, typing, pagination, scroll behavior, optimistic sends, header, encryption placeholder.
 13. [x] Complete group create/info/member administration UI.
-14. [ ] Complete settings sections, coming-soon flows, toasts.
+14. [x] Complete settings sections, coming-soon flows, toasts.
 15. [ ] Complete attachments, reactions, replies, disappearing UI, responsive layouts, shortcuts.
 16. [ ] Pixel polish and accessibility pass against specified tokens and layout.
 17. [ ] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
@@ -39,5 +39,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 11: conversation list queries are debounced and server-filtered, with matching people search, direct chat creation, add-contact and group-compose flows, recent activity order, pinned/muted, unread, online, sender preview and empty/loading/error states. Keyboard shortcuts open compose/focus search/navigate chats. `npm run lint`, `npm run typecheck`, and `npm run build` passed.
 - Item 12: chat view now renders grouped/date-separated bubbles, sender receipts, client-expiring typing, optimistic sends, quote/reply, file sending, reaction data, encryption/safety placeholder, direct/group headers, cursor pagination with scroll-position preservation, and a scroll-to-latest control. Backend suite: 17 passed. Frontend lint/typecheck/build passed.
 - Item 13: group compose picks contacts; group info lists members and admin badges, allows admin-only edits/add/remove/promote/demote, and supports self-leave. All mutations use API client methods, refresh cached details/lists, and surface errors; backend enforces privileges and its group tests pass. Frontend lint/typecheck/build passed.
+- Item 14: settings now edit profile/about/avatar, persist privacy and notification preferences, persist and apply system/light/dark theme, and expose Linked devices/Stories/Calls placeholders. New incoming inactive-chat messages and errors surface as dismissible toasts. Read receipts and typing preferences control their respective events. Frontend lint/typecheck/build passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.

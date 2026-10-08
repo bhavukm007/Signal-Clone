@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { SendEvent } from '@/hooks/useWebSocket';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 export function useTyping(send: SendEvent, conversationId: string) {
+  const enabled = usePreferencesStore((state) => state.typingIndicators);
   const started = useRef(false);
   const startTimer = useRef<number | null>(null);
   const stopTimer = useRef<number | null>(null);
@@ -16,6 +18,7 @@ export function useTyping(send: SendEvent, conversationId: string) {
   }, [conversationId, send]);
 
   const activity = useCallback((value: string) => {
+    if (!enabled) { stop(); return; }
     if (!value.trim()) {
       stop();
       return;
@@ -28,7 +31,7 @@ export function useTyping(send: SendEvent, conversationId: string) {
       }, 300);
     }
     stopTimer.current = window.setTimeout(stop, 1700);
-  }, [conversationId, send, stop]);
+  }, [conversationId, enabled, send, stop]);
 
   useEffect(() => () => stop(), [stop]);
   return activity;

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 interface UiState {
@@ -13,7 +14,7 @@ interface UiState {
   openModal: (name: string | null) => void;
 }
 
-export const useUiStore = create<UiState>((set) => ({
+export const useUiStore = create<UiState>()(persist((set) => ({
   theme: 'system',
   toast: null,
   setTheme: (theme) => set({ theme }),
@@ -26,4 +27,8 @@ export const useUiStore = create<UiState>((set) => ({
   modal: null,
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   openModal: (modal) => set({ modal }),
+}), {
+  name: 'signal-ui',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({ theme: state.theme }) as UiState,
 }));

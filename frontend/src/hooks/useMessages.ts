@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messageApi } from '@/lib/chatApi';
 import { useAuthStore } from '@/store/authStore';
@@ -6,6 +6,7 @@ import { useChatStore } from '@/store/chatStore';
 import { useUiStore } from '@/store/uiStore';
 import type { Message } from '@/types/models';
 import type { SendEvent } from '@/hooks/useWebSocket';
+import { usePreferencesStore } from '@/store/preferencesStore';
 
 export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const queryClient = useQueryClient();
@@ -15,6 +16,8 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const addMessage = useChatStore((state) => state.addMessage);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
   const notify = useUiStore((state) => state.notify);
+  const readReceipts = usePreferencesStore((state) => state.readReceipts);
+  const lastReadId = useRef<string | null>(null);
   const query = useInfiniteQuery({
     queryKey: ['messages', conversationId],
     queryFn: ({ pageParam }) => messageApi.list(conversationId, pageParam),
@@ -73,13 +76,17 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   }, [history, storeMessages]);
 
   useEffect(() => {
-    if (uniqueMessages.length === 0) return;
-    void messageApi.markRead(conversationId, uniqueMessages.at(-1)!.id);
+    const latestId = uniqueMessages.at(-1)?.id;
+    if (!latestId || !readReceipts || latestId === lastReadId.current) return;
+    lastReadId.current = latestId;
+    void messageApi.markRead(conversationId, latestId).then(() =>
+      queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+    );
     sendEvent('conversation.read', {
       conversation_id: conversationId,
-      up_to_message_id: uniqueMessages.at(-1)!.id,
+      up_to_message_id: latestId,
     });
-  }, [conversationId, uniqueMessages, sendEvent]);
+  }, [conversationId, uniqueMessages, sendEvent, readReceipts, queryClient]);
 
   return {
     messages: uniqueMessages,
