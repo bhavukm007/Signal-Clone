@@ -13,7 +13,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 9. [x] Refactor frontend into the specified app/components/hooks/stores/lib/types layout with theme tokens.
 10. [x] Complete welcome/register/verify/profile flow, persisted auth guard, profile avatar, settings logout.
 11. [x] Complete conversation list, debounced conversation/contact search, compose flows, unread/pin/mute/presence states.
-12. [ ] Complete chat view: realtime, grouped/date-separated messages, receipts, typing, pagination, scroll behavior, optimistic sends, header, encryption placeholder.
+12. [x] Complete chat view: realtime, grouped/date-separated messages, receipts, typing, pagination, scroll behavior, optimistic sends, header, encryption placeholder.
 13. [ ] Complete group create/info/member administration UI.
 14. [ ] Complete settings sections, coming-soon flows, toasts.
 15. [ ] Complete attachments, reactions, replies, disappearing UI, responsive layouts, shortcuts.
@@ -37,5 +37,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 9: frontend lint, strict typecheck, and production build passed without warnings after the route/store/theme refactor.
 - Item 10: routes implement identifier OTP request, fixed-code hint, verification, display name/avatar onboarding, persisted session, `/auth/me` refresh validation, protected app routes, and Settings logout. Frontend lint, strict typecheck, and production build passed.
 - Item 11: conversation list queries are debounced and server-filtered, with matching people search, direct chat creation, add-contact and group-compose flows, recent activity order, pinned/muted, unread, online, sender preview and empty/loading/error states. Keyboard shortcuts open compose/focus search/navigate chats. `npm run lint`, `npm run typecheck`, and `npm run build` passed.
+- Item 12: chat view now renders grouped/date-separated bubbles, sender receipts, client-expiring typing, optimistic sends, quote/reply, file sending, reaction data, encryption/safety placeholder, direct/group headers, cursor pagination with scroll-position preservation, and a scroll-to-latest control. Backend suite: 17 passed. Frontend lint/typecheck/build passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.

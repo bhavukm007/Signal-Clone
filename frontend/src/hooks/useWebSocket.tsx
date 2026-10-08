@@ -10,6 +10,7 @@ import type { WsFrame } from '@/types/ws';
 
 export type SendEvent = (type: string, payload: Record<string, unknown>) => boolean;
 const SocketContext = createContext<SendEvent>(() => false);
+const typingExpiry = new Map<string, number>();
 
 function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClient>): void {
   const chat = useChatStore.getState();
@@ -29,7 +30,16 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
     chat.removeMessage(String(payload.message_id));
   } else if (frame.type === 'typing') {
     const typing = payload as { conversation_id: string; user_id: string; is_typing: boolean };
+    const key = `${typing.conversation_id}:${typing.user_id}`;
+    const existing = typingExpiry.get(key);
+    if (existing !== undefined) window.clearTimeout(existing);
     chat.setTyping(typing.conversation_id, typing.user_id, typing.is_typing);
+    if (typing.is_typing) {
+      typingExpiry.set(key, window.setTimeout(() => {
+        useChatStore.getState().setTyping(typing.conversation_id, typing.user_id, false);
+        typingExpiry.delete(key);
+      }, 5000));
+    } else typingExpiry.delete(key);
   } else if (frame.type === 'presence') {
     const presence = payload as { user_id: string; is_online: boolean };
     usePresenceStore.getState().setPresence(presence.user_id, presence.is_online);

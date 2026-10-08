@@ -190,6 +190,9 @@ def set_reaction(db: Session, user: User, message_id: str, emoji: str, remove: b
 
 def serialize_message(db: Session, message: Message) -> dict[str, object]:
     sender = user_repository.by_id(db, message.sender_id)
+    reaction_counts: dict[str, list[str]] = {}
+    for reaction in message_repository.reactions_for_message(db, message.id):
+        reaction_counts.setdefault(reaction.emoji, []).append(reaction.user_id)
     return {
         'id': message.id,
         'conversation_id': message.conversation_id,
@@ -204,6 +207,10 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'expires_at': message.expires_at.isoformat() if message.expires_at else None,
         'reply_to_id': message.reply_to_id,
         'status': aggregate_status(db, message.id),
+        'reactions': [
+            {'emoji': emoji, 'count': len(user_ids), 'user_ids': user_ids}
+            for emoji, user_ids in sorted(reaction_counts.items())
+        ],
         'attachments': [
             {
                 'id': attachment.id,

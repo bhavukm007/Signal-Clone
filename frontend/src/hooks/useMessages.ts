@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messageApi } from '@/lib/chatApi';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
@@ -13,6 +13,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const storeMessages = useChatStore((state) => state.messagesByConversation[conversationId] ?? []);
   const setMessages = useChatStore((state) => state.setMessages);
   const addMessage = useChatStore((state) => state.addMessage);
+  const setActiveConversation = useChatStore((state) => state.setActiveConversation);
   const notify = useUiStore((state) => state.notify);
   const query = useInfiniteQuery({
     queryKey: ['messages', conversationId],
@@ -24,19 +25,22 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const history = useMemo(() => [...(query.data?.pages ?? [])].reverse().flat(), [query.data]);
 
   useEffect(() => {
+    setActiveConversation(conversationId);
     if (history.length) setMessages(conversationId, history);
-  }, [conversationId, history, setMessages]);
+    return () => setActiveConversation(null);
+  }, [conversationId, history, setMessages, setActiveConversation]);
 
   const send = useMutation({
     mutationFn: (input: { body: string; replyToId?: string; attachmentIds?: string[] }) => {
+      if (!user) throw new Error('Your session has expired. Please sign in again.');
       const clientMessageId = crypto.randomUUID();
       const optimistic: Message = {
         id: clientMessageId,
         conversation_id: conversationId,
-        sender_id: user?.id ?? '',
-        sender: user!,
+        sender_id: user.id,
+        sender: user,
         body: input.body,
-        type: 'text',
+        type: input.attachmentIds?.length ? 'file' : 'text',
         client_message_id: clientMessageId,
         created_at: new Date().toISOString(),
         edited_at: null,

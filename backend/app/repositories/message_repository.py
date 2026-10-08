@@ -36,3 +36,7 @@ def reaction_for_user(db: Session, message_id: str, user_id: str) -> Reaction | 
     return db.scalar(
         select(Reaction).where(Reaction.message_id == message_id, Reaction.user_id == user_id)
     )
+
+
+def reactions_for_message(db: Session, message_id: str) -> list[Reaction]:
+    return list(db.scalars(select(Reaction).where(Reaction.message_id == message_id)))

@@ -37,7 +37,7 @@ export interface Message {
   status: MessageStatus;
   attachments: Attachment[];
   optimistic?: boolean;
-  reactions?: Array<{ emoji: string; count: number; reacted: boolean }>;
+  reactions?: Array<{ emoji: string; count: number; user_ids: string[] }>;
 }
 
 export interface Conversation {
