@@ -6,6 +6,11 @@ __pycache__
 *.py[cod]
 .venv
 backend/signal.db
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/*.log
+backend/*.err
 backend/uploads/*
 !backend/uploads/.gitkeep
 *.tsbuildinfo

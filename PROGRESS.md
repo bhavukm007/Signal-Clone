@@ -18,7 +18,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 14. [x] Complete settings sections, coming-soon flows, toasts.
 15. [x] Complete attachments, reactions, replies, disappearing UI, responsive layouts, shortcuts.
 16. [x] Pixel polish and accessibility pass against specified tokens and layout.
-17. [ ] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
+17. [x] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
 18. [ ] Finalize Render/Vercel config and write beginner deployment guide.
 19. [ ] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
 20. [ ] Add plain-language module explanations and 15 interview questions/answers.
@@ -42,5 +42,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 14: settings now edit profile/about/avatar, persist privacy and notification preferences, persist and apply system/light/dark theme, and expose Linked devices/Stories/Calls placeholders. New incoming inactive-chat messages and errors surface as dismissible toasts. Read receipts and typing preferences control their respective events. Frontend lint/typecheck/build passed.
 - Item 15: attachments stage before send, file chips and image previews/lightbox work, emoji insertion and reaction toggling work, replies quote/scroll, per-chat disappearing timers are configurable and shown in the list, mobile back/single-pane behavior works, and keyboard shortcuts cover compose/search/close/chat navigation/send. Backend tests: 17 passed; frontend lint/typecheck/build passed.
 - Item 16: applied the requested token palette, 340–380px conversation pane, bubble geometry/metadata, hover reactions, thin scrollbars, visible keyboard focus, reduced-motion support, responsive breakpoints, meaningful time labels, original SVG chat mark, and modal focus trapping. Added Prettier and CI format checking. `npm run format:check`, lint, typecheck, build, and backend 17-test suite passed.
+- Item 17: `backend/scripts/smoke_e2e.py` passed against the existing database for both demo users: direct conversation, group creation, admin denial, typing start/stop, both-way WebSocket messages, acknowledgement, delivered/read status. Restarted the backend against the same `signal.db`; the script's `--verify-conversation/--verify-message/--verify-group` mode confirmed saved rows survived. This live run exposed and fixed the legacy SQLite receipt timestamp constraint. Final backend suite: 18 passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.
