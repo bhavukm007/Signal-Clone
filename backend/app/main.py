@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import router as api_router
@@ -19,6 +20,7 @@ from app.ws.router import router as websocket_router
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if not settings.testing:
+        settings.upload_dir.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(engine)
         with SessionLocal() as session:
             seed_if_empty(session)
@@ -66,5 +68,6 @@ def health() -> dict[str, str]:
 
 app.include_router(api_router, prefix='/api/v1')
 app.include_router(websocket_router)
+app.mount('/uploads', StaticFiles(directory=str(settings.upload_dir), check_dir=False), name='uploads')
 
 __all__ = ['Base', 'app', 'get_db']

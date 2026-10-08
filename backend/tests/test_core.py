@@ -334,3 +334,68 @@ def test_group_changes_broadcast_system_message_and_update(client: TestClient) -
             assert admin_update['type'] == 'conversation.updated'
 
 
+
+
+def test_validated_uploads_avatar_and_message_attachment(client: TestClient) -> None:
+    from pathlib import Path
+
+    first = login(client, '+91 90000 00018')
+    second = login(client, '+91 90000 00019')
+    first_headers = {'Authorization': f"Bearer {first['token']}"}
+    second_headers = {'Authorization': f"Bearer {second['token']}"}
+    rejected = client.post(
+        '/api/v1/uploads',
+        headers=first_headers,
+        files={'file': ('script.exe', b'not an image', 'application/x-msdownload')},
+    )
+    assert rejected.status_code == 415
+    assert rejected.json()['error']['code'] == 'REQUEST_ERROR'
+
+    upload = client.post(
+        '/api/v1/uploads',
+        headers=first_headers,
+        files={'file': ('notes.txt', b'hello attachment', 'text/plain')},
+    )
+    assert upload.status_code == 200
+    attachment = upload.json()
+    assert attachment['file_name'] == 'notes.txt'
+    assert client.get(attachment['url']).text == 'hello attachment'
+
+    conversation = client.post(
+        '/api/v1/conversations/direct',
+        headers=first_headers,
+        json={'user_id': second['user']['id']},
+    ).json()
+    denied_send = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=second_headers,
+        json={'client_message_id': 'not-owner-upload', 'attachment_ids': [attachment['id']]},
+    )
+    assert denied_send.status_code == 404
+    sent = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=first_headers,
+        json={'client_message_id': 'attachment-send-1', 'attachment_ids': [attachment['id']]},
+    )
+    assert sent.status_code == 200
+    assert sent.json()['type'] == 'file'
+    assert sent.json()['attachments'][0]['id'] == attachment['id']
+    used_again = client.post(
+        f"/api/v1/conversations/{conversation['id']}/messages",
+        headers=first_headers,
+        json={'client_message_id': 'attachment-send-2', 'attachment_ids': [attachment['id']]},
+    )
+    assert used_again.status_code == 409
+
+    avatar = client.post(
+        '/api/v1/users/me/avatar',
+        headers=first_headers,
+        files={'file': ('avatar.png', b'\x89PNG\r\n\x1a\nsmall-png', 'image/png')},
+    )
+    assert avatar.status_code == 200
+    assert client.get(avatar.json()['avatar_url']).content.startswith(b'\x89PNG')
+
+    upload_file = Path('uploads') / attachment['url'].rsplit('/', 1)[-1]
+    avatar_file = Path('uploads') / avatar.json()['avatar_url'].rsplit('/', 1)[-1]
+    upload_file.unlink(missing_ok=True)
+    avatar_file.unlink(missing_ok=True)

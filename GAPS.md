@@ -11,7 +11,7 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 | Authentication | Opaque random tokens are stored as SHA-256 hashes with 30-day expiry; logout and expired sessions are revoked; REST and WebSocket share token validation | Add device/session management only if required; core requested behavior is covered |
 | Messages/receipts | Idempotent REST/WS send; client ack; per-recipient sent/delivered/read; all-recipient aggregate; online delivery on connect; cursor read; typing throttle; first/last socket presence and reconnect delivery are covered by tests | Group-wide aggregate edge cases and reaction broadcast tests remain in group/realtime validation |
 | Groups | Group creation, member listing/add/remove/role editing API and admin checks live in services | System messages, conversation broadcasts, UI, and broader role tests |
-| Uploads | Route placeholder only; attachment schema exists | Validated storage, serving, metadata creation, avatar/attachment client flows |
+| Uploads | API size/type/signature checks, randomized static storage, attachment ownership/linking, and avatar endpoint are implemented and covered by TestClient | Frontend composer preview/lightbox remains in item 15 |
 | Disappearing messages | Schema and timer patch path exist | Cancellable purge task and deleted events; fully exercise timer lifecycle |
 | Seed | 10 users, 9 DMs × 18 messages, and 3 groups × 16 messages generated on empty DB | Contacts, reactions/replies, unread diversity, proper system-message text, standalone idempotency verification |
 | Frontend | Current single page still builds but is compressed and tightly coupled | Prescribed route/component/hooks/store/lib structure and all flows in items 9–16 |
@@ -21,5 +21,6 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 
 - `TestClient` uses an AnyIO Windows loopback socketpair internally; under the restricted shell it blocks before the app request executes. Running the in-process suite via the reviewed escalation path passes; the test code itself performs no external network requests.
 - npm registry access required the reviewed escalation path after the sandbox returned `ENOTFOUND`; a lockfile is now present and reproducible `npm ci` succeeded.
+
 
 

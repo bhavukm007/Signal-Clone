@@ -59,7 +59,8 @@ class Attachment(Base):
     __table_args__ = (CheckConstraint('size_bytes > 0', name='ck_attachments_size_positive'),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    message_id: Mapped[str] = mapped_column(ForeignKey('messages.id', ondelete='CASCADE'), index=True)
+    message_id: Mapped[str | None] = mapped_column(ForeignKey('messages.id', ondelete='CASCADE'), index=True)
+    uploaded_by: Mapped[str] = mapped_column(ForeignKey('users.id', ondelete='CASCADE'), index=True)
     file_name: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(150))
     size_bytes: Mapped[int] = mapped_column(Integer)

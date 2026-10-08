@@ -5,9 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
-from app.models.message import Message, Reaction, Receipt
+from app.models.message import Attachment, Message, Reaction, Receipt
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
+from app.repositories.attachment_repository import by_id as get_attachment
+from app.repositories.attachment_repository import for_message as list_attachments
 from app.schemas.message import MessageCreate
 from app.schemas.user import UserOut
 
@@ -19,6 +21,16 @@ def create_message(db: Session, conversation_id: str, sender: User, body: Messag
     existing = message_repository.by_idempotency_key(db, sender.id, body.client_message_id)
     if existing is not None:
         return existing
+    if not body.body.strip() and not body.attachment_ids:
+        raise HTTPException(status_code=422, detail='Message text or an attachment is required')
+    attachments: list[Attachment] = []
+    for attachment_id in body.attachment_ids:
+        attachment = get_attachment(db, attachment_id)
+        if attachment is None or attachment.uploaded_by != sender.id:
+            raise HTTPException(status_code=404, detail='Attachment not found')
+        if attachment.message_id is not None:
+            raise HTTPException(status_code=409, detail='Attachment has already been sent')
+        attachments.append(attachment)
     if body.reply_to_id:
         reply = message_repository.by_id(db, body.reply_to_id)
         if reply is None or reply.conversation_id != conversation_id:
@@ -31,12 +43,18 @@ def create_message(db: Session, conversation_id: str, sender: User, body: Messag
         conversation_id=conversation_id,
         sender_id=sender.id,
         body=body.body,
+        type=(
+            'image' if attachments and attachments[0].mime_type.startswith('image/')
+            else 'file' if attachments else 'text'
+        ),
         client_message_id=body.client_message_id,
         reply_to_id=body.reply_to_id,
         expires_at=expires_at,
     )
     db.add(message)
     db.flush()
+    for attachment in attachments:
+        attachment.message_id = message.id
     conversation.last_message_id = message.id
     conversation.last_activity_at = message.created_at
     for recipient in conversation_repository.participants(db, conversation_id):
@@ -185,4 +203,14 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'deleted_at': message.deleted_at.isoformat() if message.deleted_at else None,
         'reply_to_id': message.reply_to_id,
         'status': aggregate_status(db, message.id),
+        'attachments': [
+            {
+                'id': attachment.id,
+                'file_name': attachment.file_name,
+                'mime_type': attachment.mime_type,
+                'size_bytes': attachment.size_bytes,
+                'url': f'/uploads/{attachment.storage_path}',
+            }
+            for attachment in list_attachments(db, message.id)
+        ],
     }
