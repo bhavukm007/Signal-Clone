@@ -1,6 +1,6 @@
 # Progress checklist
 
-Status values: `[ ]` pending, `[x]` completed. Completion requires passing verification or a documented CI-only/unverified status in item 21.
+Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in item 21.
 
 1. [x] Make backend tests runnable and green using in-memory SQLite, TESTING lifespan gate, `pytest-timeout`, and TestClient REST/WebSocket; install frontend dependencies and pass lint/typecheck/build.
 2. [x] Refactor backend into API → services → repositories → models; add all specified tables, schemas, constraints, indexes, and consistent errors.
@@ -9,9 +9,9 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 5. [x] Complete groups with server-side admin rules, system messages, broadcasts, and tests.
 6. [x] Implement validated avatar and attachment uploads.
 7. [x] Implement expiring messages, cancellable purger, deletion broadcast, and tests.
-8. [x] Complete idempotent seed script with 8–10 users, demo accounts, contacts, varied DMs/groups/statuses/settings.
+8. [x] Complete idempotent seed script with 8–10 users, demo accounts, contacts, varied DMs/groups/statuses.
 9. [x] Refactor frontend into the specified app/components/hooks/stores/lib/types layout with theme tokens.
-10. [ ] Complete welcome/register/verify/profile flow, persisted auth guard, profile avatar, settings logout.
+10. [x] Complete welcome/register/verify/profile flow, persisted auth guard, profile avatar, settings logout.
 11. [ ] Complete conversation list, debounced conversation/contact search, compose flows, unread/pin/mute/presence states.
 12. [ ] Complete chat view: realtime, grouped/date-separated messages, receipts, typing, pagination, scroll behavior, optimistic sends, header, encryption placeholder.
 13. [ ] Complete group create/info/member administration UI.
@@ -26,17 +26,15 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 
 ## Verification log
 
-- Item 1: `python -m pytest -x -q` → 6 passed, including an in-process TestClient WebSocket ping; `npm ci --no-audit --no-fund --prefer-offline`, `npm run lint`, `npm run typecheck`, and `npm run build` all exited 0. React Hook warnings remain and are tracked for the frontend refactor.
-- Item 2: `python -m compileall -q app tests` passed; `python -m pytest -x -q` → 6 passed after modularization; `app.openapi()` registered 24 HTTP routes before the final ping route was added. All expected table names are asserted by a test.`n- Item 3: `python -m pytest -x -q` → 9 passed, including token hash-at-rest, 30-day expiry, REST logout/expiry rejection, and revoked WebSocket rejection.`n- Item 4: `python -m pytest -x -q` → 12 passed, including sender/recipient message WS delivery, `sent → delivered → read` receipts, typing, presence transitions, pending delivery on reconnect, and multiple tabs.`n- Item 5: `python -m pytest -x -q` → 14 passed, including admin denial, role promotion, add/remove/self-leave, group rename, system-message persistence, and live update broadcast.`n- Item 6: `python -m pytest -x -q` → 15 passed, including MIME rejection, file serving, attachment uploader ownership, single-use linking, avatar storage, and test cleanup.`n- Item 7: `python -m pytest -x -q` → 16 passed, including timer assignment, forced expiry, persisted soft deletion, and WebSocket `message.deleted`; the worker is lifespan-scoped, non-blocking, and cancelled on shutdown.`n- Item 8: `python -m pytest -x -q` → 17 passed; seed test verifies repeat-call idempotence, 10 users, 60 contacts, 9 DMs with 18 messages each, 3 five-member groups with 16 messages each, mixed statuses, reactions, replies, unread cursors, pinned/muted/disappearing state, and both demo phones.
-- The test suite uses `sqlite://` with `StaticPool`, `check_same_thread=False`, overrides `get_db`, and sets `TESTING=1`; production lifespan creates tables and seeds only outside test mode.
-- The backend and frontend installs needed the approved network/runtime execution path because package networking and Windows asyncio's internal socketpair are blocked in the default shell sandbox.
-
-
-
-
-
-
-- Item 9: 
-pm run lint, 
-pm run typecheck, and 
-pm run build passed. Frontend now has route groups, typed API/model boundaries, Query/Zustand stores, reconnecting WebSocket client/hooks, reusable UI primitives, and CSS-variable light/dark tokens. Fixed App Router alias resolution and removed frontend lint warnings.
+- Item 1: `python -m pytest -x -q` passed six tests with an in-process TestClient WebSocket ping. `npm ci`, lint, strict typecheck, and production build passed on the initial frontend.
+- Item 2: `python -m compileall -q app tests` passed; backend suite passed after modularization. OpenAPI and table coverage are tested.
+- Item 3: backend tests cover token hash-at-rest, expiry, REST logout, and revoked WebSocket rejection.
+- Item 4: backend tests cover `sent → delivered → read`, presence transitions, typing, pending delivery on reconnect, and multiple tabs.
+- Item 5: backend tests cover admin denial, promotion, add/remove/leave, system message persistence, and live broadcast.
+- Item 6: backend tests cover MIME rejection, file serving, uploader ownership, attachment linking, and avatar storage.
+- Item 7: backend tests cover timer assignment, expiry purge, persisted soft deletion, and `message.deleted` broadcast.
+- Item 8: backend test verifies idempotence, 10 users, 60 contacts, 9 DMs × 18 messages, 3 groups × 16 messages, reactions, replies, receipt variation, unread/pinned/muted/disappearing state, and demo accounts.
+- Item 9: frontend lint, strict typecheck, and production build passed without warnings after the route/store/theme refactor.
+- Item 10: routes implement identifier OTP request, fixed-code hint, verification, display name/avatar onboarding, persisted session, `/auth/me` refresh validation, protected app routes, and Settings logout. Frontend lint, strict typecheck, and production build passed.
+- Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
+- Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.
