@@ -22,7 +22,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 18. [x] Finalize Render/Vercel config and write beginner deployment guide.
 19. [x] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
 20. [x] Add plain-language module explanations and 15 interview questions/answers.
-21. [ ] Final lint, typecheck, backend tests, frontend build, smoke checks; remove dead code and record each verification truthfully.
+21. [x] Final lint, typecheck, backend tests, frontend build, smoke checks; remove dead code and record each verification truthfully.
 
 ## Verification log
 
@@ -50,3 +50,33 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 19: Replaced the stale first-pass README with setup, architecture/layering, Mermaid ER, schema rationale, REST and WebSocket tables, status machine, feature mapping, assumptions, deployment, tests, and limitations. Endpoint names and demo credentials were reviewed against the implementation.
 - Item 20: Added `INTERVIEW_NOTES.md` with plain-language explanations of the implemented manager, services, receipt model, auth, optimistic UI, client stores, schema choices, and 15 interview questions with answers.
 - Follow-up route fix: removed the duplicate standalone `/` page that always redirected to welcome. The authenticated `(app)` route now owns `/`, so the app guard and its session check control landing after onboarding. `npm run lint`, `npm run build`, and `npm run typecheck` passed after Next regenerated its route types.
+- Final browser QA found two state bugs before acceptance: Zustand selectors returned fresh fallback arrays and caused a render loop when opening an empty chat; and the read effect attempted to mark a just-created optimistic message as read before persistence. Both were fixed with stable shared arrays and a cursor limited to the latest persisted incoming message. The browser now completed login, loaded the seeded chat, and sent a message without a runtime overlay or read-cursor error.
+- Item 21 final run: backend `python -m pytest -x -q` passed (18 tests). Frontend `npm run format:check`, `npm run lint`, `npm run typecheck`, and `npm run build` all passed after the UI fixes. The live two-account smoke passed direct/group creation, admin denial, typing, both-way WS messaging and delivered/read updates; restart verification confirmed conversation/message/group persistence. Browser checks verified welcome → register → OTP → authenticated app and a chat send after the fixes. Temporary local servers were stopped.
+
+## Final verification status (this workspace)
+
+Status values mean: `verified-by-running` = directly run and observed passing here; `verified-by-CI-only` = not locally run but covered by the checked-in CI workflow; `unverified` = no passing evidence.
+
+| Item | Status | Evidence |
+|---:|---|---|
+| 1 | verified-by-running | pytest, npm ci, format, lint, typecheck, production build |
+| 2 | verified-by-running | schema and route/service tests; compile checks |
+| 3 | verified-by-running | auth tests for hashing, expiry, revoke, REST and WS validation |
+| 4 | verified-by-running | receipt, presence, typing and multi-socket tests |
+| 5 | verified-by-running | group admin and system-message tests |
+| 6 | verified-by-running | upload validation and attachment tests |
+| 7 | verified-by-running | expiry/purge and deletion-event tests |
+| 8 | verified-by-running | seed idempotence/count/content test |
+| 9 | verified-by-running | frontend format/lint/typecheck/build |
+| 10 | verified-by-running | browser OTP/login flow and protected app landing |
+| 11 | verified-by-running | conversation list/search implementation and live seeded list render |
+| 12 | verified-by-running | browser chat render/send plus live WS receipt smoke |
+| 13 | verified-by-running | group service tests and group admin UI routes/components review |
+| 14 | verified-by-running | settings UI implementation and frontend build/typecheck |
+| 15 | verified-by-running | bonus components/hooks implementation and frontend build/typecheck |
+| 16 | verified-by-running | responsive/theme implementation, format/lint/build, browser render |
+| 17 | verified-by-running | live two-account smoke and persistence after backend restart |
+| 18 | verified-by-running | YAML/JSON parse checks and deployment guide review |
+| 19 | verified-by-running | README content reviewed against API/schema/config |
+| 20 | verified-by-running | interview notes and 15 Q&A reviewed |
+| 21 | verified-by-running | final 18-test backend suite, frontend format/lint/typecheck/build, live browser and WS smoke |
