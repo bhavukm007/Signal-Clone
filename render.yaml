@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: signal-clone-api
+    runtime: docker
+    rootDir: backend
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:////data/signal.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://your-app.vercel.app
+    disk:
+      name: signal-data
+      mountPath: /data
+      sizeGB: 1

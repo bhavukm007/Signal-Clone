@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: sqlite:////data/signal.db
+      CORS_ORIGINS: http://localhost:3000
+    volumes: ["signal-data:/data", "./backend/uploads:/app/uploads"]
+  frontend:
+    build: ./frontend
+    ports: ["3000:3000"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
+    depends_on: [backend]
+volumes:
+  signal-data:

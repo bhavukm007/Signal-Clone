@@ -1,0 +1,10 @@
+node_modules
+.next
+.env*
+!.env.example
+__pycache__
+*.py[cod]
+.venv
+backend/signal.db
+backend/uploads/*
+!backend/uploads/.gitkeep
