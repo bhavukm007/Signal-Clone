@@ -79,6 +79,7 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
             'is_online': bool(other and other.is_online),
             'last_seen_at': other.last_seen_at if other else None,
             'avatar_color': other.avatar_color if other else '#3A76F0',
+            'disappearing_timer_seconds': conversation.disappearing_timer_seconds,
         })
     return sorted(result, key=lambda item: (not item['is_pinned'], -item['last_activity_at'].timestamp()))
 

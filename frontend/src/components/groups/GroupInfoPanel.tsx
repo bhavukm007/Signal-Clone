@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { Timer } from 'lucide-react';
 import { contactApi, conversationApi } from '@/lib/chatApi';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
 import { useAuthStore } from '@/store/authStore';
@@ -51,8 +52,13 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
     try { await conversationApi.setRole(conversationId, userId, role); await refresh(); }
     catch { useUiStore.getState().notify('Member role could not be changed.'); }
   }
+  async function setTimer(seconds: number) {
+    try { await conversationApi.patch(conversationId, { disappearing_timer_seconds: seconds }); await refresh(); }
+    catch { useUiStore.getState().notify('Disappearing timer could not be updated.'); }
+  }
   return <Modal title={conversation.type === 'group' ? 'Group info' : 'Conversation info'} onClose={close}>
     <div className="group-summary"><Avatar name={conversation.title || 'Chat'} color="#8298c9"/><h3>{conversation.title || 'Chat'}</h3><p>{conversation.participants.length} members</p></div>
+    <section className="timer-setting"><h3><Timer size={16}/> Disappearing messages</h3><select aria-label="Disappearing message timer" value={conversation.disappearing_timer_seconds || 0} onChange={(event) => void setTimer(Number(event.target.value))}><option value={0}>Off</option><option value={30}>30 seconds</option><option value={300}>5 minutes</option><option value={3600}>1 hour</option><option value={86400}>1 day</option><option value={604800}>1 week</option></select></section>
     {conversation.type === 'group' && <>
       {isAdmin && <div className="group-edit"><Input aria-label="Group name" placeholder={conversation.title} value={name} onChange={(event) => setName(event.target.value)} /><Input aria-label="Group description" placeholder={conversation.description || 'Description'} value={description} onChange={(event) => setDescription(event.target.value)} /><Button onClick={() => void updateName()}>Save group details</Button></div>}
       <div className="member-list"><h3>Members</h3>{conversation.participants.map(({ user, role }) => <div className="member-row" key={user.id}><Avatar name={user.display_name} color={user.avatar_color} online={user.is_online}/><span className="member-name">{user.display_name}{user.id === viewer?.id ? ' (you)' : ''}<small>{role === 'admin' ? 'Admin' : 'Member'}</small></span>{isAdmin && user.id !== viewer?.id && <div className="member-actions"><button onClick={() => void setRole(user.id, role === 'admin' ? 'member' : 'admin')}>{role === 'admin' ? 'Demote' : 'Promote'}</button><button onClick={() => void removeMember(user.id)}>Remove</button></div>}</div>)}</div>
