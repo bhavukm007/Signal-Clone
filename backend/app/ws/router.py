@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services.auth_service import validate_demo_token
+from app.services.auth_service import validate_websocket_token
 
 router = APIRouter()
 
 
 @router.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket, token: str = '', db: Session = Depends(get_db)) -> None:
-    user = validate_demo_token(db, token)
+    user = validate_websocket_token(db, token)
     if user is None:
         await websocket.close(code=4401)
         return

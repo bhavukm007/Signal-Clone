@@ -3,8 +3,9 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import create_session_token, hash_token
 from app.db.base import utc_now
-from app.models.auth import OtpChallenge
+from app.models.auth import AuthSession, OtpChallenge
 from app.models.user import User
 from app.repositories import auth_repository, user_repository
 from app.schemas.auth import OtpRequest, OtpVerify
@@ -36,9 +37,16 @@ def verify_otp(db: Session, body: OtpVerify) -> dict[str, object]:
             display_name='',
         )
         user_repository.create(db, user)
+    token = create_session_token()
+    db.add(AuthSession(
+        user_id=user.id,
+        token_hash=hash_token(token),
+        device_name='Web browser',
+        expires_at=utc_now() + timedelta(days=30),
+    ))
     db.commit()
     db.refresh(user)
-    return {'token': f'demo-{user.id}', 'user': user, 'is_new_user': is_new}
+    return {'token': token, 'user': user, 'is_new_user': is_new}
 
 
 def update_profile(db: Session, user: User, body: ProfileUpdate) -> User:
@@ -50,11 +58,28 @@ def update_profile(db: Session, user: User, body: ProfileUpdate) -> User:
     return user
 
 
-def logout() -> dict[str, bool]:
+def validate_token(db: Session, token: str) -> User | None:
+    session = auth_repository.sessions_for_token(db, hash_token(token))
+    if session is None or session.revoked_at is not None:
+        return None
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=utc_now().tzinfo)
+    if expires_at <= utc_now():
+        session.revoked_at = utc_now()
+        db.commit()
+        return None
+    return user_repository.by_id(db, session.user_id)
+
+
+def logout(db: Session, token: str, user: User) -> dict[str, bool]:
+    session = auth_repository.sessions_for_token(db, hash_token(token))
+    if session is None or session.user_id != user.id or session.revoked_at is not None:
+        raise HTTPException(status_code=401, detail='Invalid or revoked session')
+    session.revoked_at = utc_now()
+    db.commit()
     return {'ok': True}
 
 
-def validate_demo_token(db: Session, token: str):
-    if not token.startswith('demo-'):
-        return None
-    return user_repository.by_id(db, token.removeprefix('demo-'))
+def validate_websocket_token(db: Session, token: str) -> User | None:
+    return validate_token(db, token)

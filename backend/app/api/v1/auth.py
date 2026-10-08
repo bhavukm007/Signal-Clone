@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -33,8 +33,15 @@ def update_profile(
 
 
 @router.post('/logout')
-def logout():
-    return auth_service.logout()
+def logout(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if authorization is None or not authorization.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail='Bearer token required')
+    token = authorization.removeprefix('Bearer ')
+    return auth_service.logout(db, token, user)
 
 
 @router.get('/me', response_model=UserOut)

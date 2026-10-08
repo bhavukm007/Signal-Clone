@@ -23,6 +23,14 @@ def database():
     Base.metadata.drop_all(_test_engine)
 
 @pytest.fixture
+def db_session(database):
+    session = _TestSession()
+    try:
+        yield session
+    finally:
+        session.close()
+
+@pytest.fixture
 def client(database):
     def override_db():
         session = _TestSession()
