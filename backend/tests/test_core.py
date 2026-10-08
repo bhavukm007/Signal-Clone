@@ -450,3 +450,36 @@ def test_disappearing_timer_purges_and_broadcasts_delete(client: TestClient, db_
             db_session.refresh(message)
             assert message.deleted_at is not None
             assert message.body == 'This message expired'
+
+
+def test_seed_data_is_complete_and_idempotent(db_session, client: TestClient) -> None:
+    from sqlalchemy import func, select
+    from app.db.seed import seed_if_empty
+    from app.models.contact import Contact
+    from app.models.conversation import Conversation, Participant
+    from app.models.message import Message, Reaction, Receipt
+    from app.models.user import User
+
+    assert seed_if_empty(db_session) is True
+    assert seed_if_empty(db_session) is False
+    assert db_session.scalar(select(func.count(User.id))) == 10
+    assert db_session.scalar(select(func.count(Contact.id))) == 60
+    assert db_session.scalar(select(func.count(Conversation.id)).where(Conversation.type == 'direct')) == 9
+    assert db_session.scalar(select(func.count(Conversation.id)).where(Conversation.type == 'group')) == 3
+    assert db_session.scalar(select(func.count(Message.id))) == 210
+    assert db_session.scalar(select(func.count(Reaction.id))) >= 30
+    assert db_session.scalar(select(func.count(Message.id)).where(Message.reply_to_id.is_not(None))) >= 10
+    assert db_session.scalar(select(func.count(Receipt.id)).where(Receipt.status == 'sent')) > 0
+    assert db_session.scalar(select(func.count(Receipt.id)).where(Receipt.status == 'delivered')) > 0
+    assert db_session.scalar(select(func.count(Receipt.id)).where(Receipt.status == 'read')) > 0
+
+    demo_headers = {'Authorization': f"Bearer {login(client)['token']}"}
+    items = client.get('/api/v1/conversations', headers=demo_headers).json()
+    assert any(item['unread_count'] > 0 for item in items)
+    assert any(item['is_pinned'] for item in items)
+    assert any(item['muted_until'] for item in items)
+    assert any(item['type'] == 'group' for item in items)
+    demo = db_session.scalar(select(User).where(User.phone_number == '+91 90000 00001'))
+    assert demo is not None
+    assert db_session.scalar(select(func.count(Participant.id)).where(Participant.user_id == demo.id)) >= 6
+    assert db_session.scalar(select(User).where(User.phone_number == '+91 90000 00002')) is not None

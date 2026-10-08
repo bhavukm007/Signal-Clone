@@ -13,7 +13,7 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 | Groups | Group creation, member listing/add/remove/role editing API and admin checks live in services | System messages, conversation broadcasts, UI, and broader role tests |
 | Uploads | API size/type/signature checks, randomized static storage, attachment ownership/linking, and avatar endpoint are implemented and covered by TestClient | Frontend composer preview/lightbox remains in item 15 |
 | Disappearing messages | Timer applies to new messages; non-blocking lifespan worker commits soft deletes and broadcasts `message.deleted`; TestClient covers purge behavior | Frontend timer controls/state remain in item 15 |
-| Seed | 10 users, 9 DMs × 18 messages, and 3 groups × 16 messages generated on empty DB | Contacts, reactions/replies, unread diversity, proper system-message text, standalone idempotency verification |
+| Seed | Idempotent startup/CLI seed creates 10 users, 60 contact links, 9 DMs × 18 messages, 3 groups × 16 messages, varied receipt states, reactions/replies, unread/pinned/muted/disappearing state; test checks counts and repeat call | Complete |
 | Frontend | Current single page still builds but is compressed and tightly coupled | Prescribed route/component/hooks/store/lib structure and all flows in items 9–16 |
 | Deployment/docs | Basic Docker/Render/Vercel manifests exist | CI, complete beginner deploy guide, final README, interview notes, smoke run |
 
@@ -21,6 +21,7 @@ Reviewed the first-pass README, API, tests, frontend source and deployment manif
 
 - `TestClient` uses an AnyIO Windows loopback socketpair internally; under the restricted shell it blocks before the app request executes. Running the in-process suite via the reviewed escalation path passes; the test code itself performs no external network requests.
 - npm registry access required the reviewed escalation path after the sandbox returned `ENOTFOUND`; a lockfile is now present and reproducible `npm ci` succeeded.
+
 
 
 
