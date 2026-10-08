@@ -2,7 +2,7 @@
 
 A full-stack desktop-style messaging demo built with Next.js, FastAPI, SQLAlchemy, and SQLite. It includes onboarding, contacts, direct and group conversations, persisted messages, realtime delivery/read status, typing and presence events, uploads, reactions, replies, disappearing timers, and light/dark themes.
 
-**Screenshots:** _placeholder — add screenshots of the running app here._
+**Screenshots:** [responsive UI captures](docs/screenshots/README.md) show phone, tablet, and desktop layouts in light and dark themes.
 
 ## Demo accounts
 
@@ -52,7 +52,6 @@ Open [http://localhost:3000](http://localhost:3000). The example frontend URLs t
 | Variable | Service | Example / purpose |
 |---|---|---|
 | `DATABASE_URL` | Backend | `sqlite:///./signal.db`; Render disk: `sqlite:////data/signal.db` |
-| `JWT_SECRET` | Backend | Secret used to create opaque random session tokens; token hashes are stored in SQLite |
 | `CORS_ORIGINS` | Backend | Comma-separated exact web origins, such as `http://localhost:3000` |
 | `UPLOAD_DIR` | Backend | `uploads`; Render disk: `/data/uploads` |
 | `OTP_CODE` | Backend | Mock verification code, defaults to `123456` |
@@ -107,6 +106,7 @@ erDiagram
     string display_name
     string about
     string avatar_url
+    string avatar_storage_path
     string avatar_color
     boolean is_online
     datetime last_seen_at
@@ -213,11 +213,11 @@ Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP req
 |---|---|
 | Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `PUT /auth/profile`, `POST /auth/logout`, `GET /auth/me` |
 | Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar` |
-| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block` |
+| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block`, `PUT /contacts/users/{user_id}/block` |
 | Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
 | Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
 | Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
-| Uploads/system | `POST /uploads`, static `/uploads/{path}`, `GET /health`, interactive `/docs` |
+| Uploads/media/system | `POST /uploads`, authenticated `GET /media/attachments/{id}`, authenticated `GET /media/avatars/{user_id}`, `GET /health`, interactive `/docs` |
 
 Cursor history is returned oldest-to-newest within each page; the UI requests older pages using the first message ID as `before`. Group membership and role checks happen in backend services, not only in the UI.
 
@@ -236,11 +236,11 @@ Connect to `/ws?token=<bearer-token>`. Each frame has `{ "type": "event.name", "
 | Server → client | `message.new`, `message.ack` | Deliver message and acknowledge sender's client ID |
 | Server → client | `message.status` | Per-recipient and aggregate delivery/read update |
 | Server → client | `typing`, `presence` | Typing state and online/last-seen changes |
-| Server → client | `conversation.updated` | Refresh group name/member metadata |
+| Server → client | `conversation.updated` | `{conversation_id}`; clients invalidate and reload group metadata |
 | Server → client | `reaction.updated`, `message.deleted` | Refresh message reactions or remove expired/deleted message |
 | Server → client | `error`, `pong` | Report invalid event or answer heartbeat |
 
-The connection manager supports multiple sockets per user. First connect marks online and delivers pending receipts; last disconnect records `last_seen_at`. The browser reconnects with exponential backoff and invalidates REST queries to resync.
+The connection manager supports multiple sockets per user. First connect marks online and delivers pending receipts; cleanup in `finally` records `last_seen_at` when the final socket exits. A 75-second heartbeat timeout drops stale sockets; the browser pings every 25 seconds, reconnects with exponential backoff, and invalidates REST queries to resync. Expired/revoked WebSocket credentials clear the client session instead of retrying forever.
 
 ### Message status state machine
 
@@ -252,7 +252,7 @@ stateDiagram-v2
   delivered --> read: recipient advances read cursor
 ```
 
-For groups, the aggregate remains `sent` while any recipient is pending, becomes `delivered` after every recipient is delivered, and becomes `read` after every recipient reads. A client-only `sending` state is never persisted.
+For groups, the aggregate considers current participants (`left_at IS NULL`): it remains `sent` while any current recipient is pending, becomes `delivered` after every current recipient is delivered, and becomes `read` after every current recipient reads. A client-only `sending` state is never persisted.
 
 ## Feature checklist
 
@@ -269,13 +269,14 @@ For groups, the aggregate remains `sent` while any recipient is pending, becomes
 - Session tokens are random opaque bearer values stored as SHA-256 hashes with expiry/revocation; they are not JWTs. This keeps session validation explicit for both REST and WebSockets.
 - “End-to-end encrypted” is UI copy only. There is no cryptographic message encryption or key exchange.
 - Calls, Stories, and linked devices are “Coming Soon” placeholders. Notifications are in-app toasts; there is no push service.
-- Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured local upload directory.
+- Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured upload directory and delivered only through authenticated media routes. Attachment routes require active conversation membership; avatar routes require self or contact access.
 - SQLite and the WebSocket connection manager are single-instance choices. A multi-instance deployment would need a shared database and pub/sub connection broker.
 - Seed data runs only for an empty users table. The development OTP and demo accounts are intentionally predictable.
+- This checkout has no public GitHub remote or hosted demo URL. Publishing and deployment are outside this local implementation pass.
 
 ## Deployment
 
-See [DEPLOY.md](DEPLOY.md) for click-by-click GitHub → Render → Vercel steps. Render mounts a persistent disk at `/data` and uses `DATABASE_URL=sqlite:////data/signal.db`; without a persistent disk SQLite resets with an ephemeral deploy. Vercel must set `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` at build time. The backend `CORS_ORIGINS` must contain the exact Vercel origin. Production WebSockets use `wss://`.
+See [DEPLOY.md](DEPLOY.md) for click-by-click GitHub → Render → Vercel steps. Render mounts a persistent disk at `/data` and uses `DATABASE_URL=sqlite:////data/signal.db`; without a persistent disk SQLite resets with an ephemeral deploy. Vercel must set `NEXT_PUBLIC_API_URL` at build time; `NEXT_PUBLIC_WS_URL` is optional and defaults to the matching `ws://` or `wss://` API origin. The backend `CORS_ORIGINS` must contain the exact Vercel origin.
 
 ## Tests and verification
 

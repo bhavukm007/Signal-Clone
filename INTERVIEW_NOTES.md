@@ -6,7 +6,7 @@ This project favors explicit data flow and authorization checks over hidden fram
 
 ### WebSocket manager
 
-`backend/app/ws/manager.py` keeps a map from each user ID to a set of connected sockets. A set matters because one person may have the app open in multiple tabs. When the first socket connects, the service marks the user online and announces presence; when the last socket disconnects, it stores `last_seen_at` and announces offline. The manager sends events to every active socket for a user and removes failed sockets. Typing updates are throttled with a monotonic clock so wall-clock adjustments cannot defeat the limit. This manager is intentionally process-local; more than one backend instance would need a shared pub/sub service.
+`backend/app/ws/manager.py` keeps a map from each user ID to a set of connected sockets. A set matters because one person may have the app open in multiple tabs. The endpoint unregisters in `finally`, and only the last socket causes `last_seen_at` and offline presence to update. Failed sends close and remove dead sockets. A sweeper drops sockets that miss the 75-second timeout; the browser pings every 25 seconds. Typing updates are throttled with a monotonic clock. This manager is intentionally process-local; more than one backend instance would need a shared pub/sub service.
 
 ### Message service
 
@@ -14,7 +14,7 @@ This project favors explicit data flow and authorization checks over hidden fram
 
 ### Receipt logic
 
-`message_receipts` stores one row per message recipient. A recipient's row records delivery and read timestamps independently. The service advances read cursors and marks that recipient's earlier messages read; the sender sees an aggregate computed from all recipients. A group stays sent while any recipient is pending, becomes delivered when all recipients have received it, and becomes read when all have read it. A client-only `sending` state covers the time before the server acknowledges persistence.
+`message_receipts` stores one row per message recipient. A recipient's row records delivery and read timestamps independently. The service advances read cursors and marks that recipient's earlier messages read; the sender sees an aggregate computed only from current participants (`left_at IS NULL`). A group stays sent while any current recipient is pending, becomes delivered when all current recipients have received it, and becomes read when all current recipients have read it. A client-only `sending` state covers the time before the server acknowledges persistence.
 
 ### Schema choices
 

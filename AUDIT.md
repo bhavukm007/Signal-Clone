@@ -328,3 +328,57 @@ README setup commands are syntactically coherent. Literal setup was blocked at p
 * Disappearing-message worker live probe: **timed out waiting for `message.deleted`**. Direct purge service unit test passed; worker/broadcast remains unverified.
 * Browser visual inspection: desktop 1280×720 and dark settings observed; screenshots were not saved as files. 375px and 768px behavior unverified.
 * Cleanup: no listener was present on ports 3000 or 8000 at the final server check. Audit began with a clean Git tree; this report is the only intended working-tree addition.
+
+## Fix report
+
+This section supersedes the historical findings above where a defect has been fixed and verified. D-01 remains open because publishing a public repository or deploying a hosted demo was explicitly excluded from this work. D-16 is low severity and remains open because the old-schema migration still does not rebuild all legacy tables to apply every fresh-schema constraint.
+
+| Defect | Status | Change and verification |
+|---|---|---|
+| D-01 | NOT-FIXED | No remote or hosted demo was created, as requested. Public repository/demo deliverables therefore remain absent. |
+| D-02 | FIXED-VERIFIED | Formatted `frontend/tsconfig.json`; clean isolated `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, and `npm run build` all passed. |
+| D-03 | FIXED-VERIFIED | Blocking now prevents direct messages and suppresses blocked-party presence/receipts; REST and chat/contact UI expose confirmed block/unblock with visible state. Verified by `backend/tests/test_audit_privacy_media.py`, backend suite, and Playwright block flow. |
+| D-04 | FIXED-VERIFIED | Removed public static upload serving; authenticated media endpoints enforce membership/contact authorization and random storage names. Verified by unauthenticated 401, non-member 403, member 200 tests; MIME/size rejection tests also pass. |
+| D-05 | FIXED-VERIFIED | WebSocket receive cleanup runs in `finally`; manager removes failed sockets, updates offline state only for last tab, and sweeps stale connections. Verified by abrupt disconnect and multi-tab TestClient WebSocket tests. |
+| D-06 | FIXED-VERIFIED | Receipt aggregation now evaluates current participants only. Regression covers a member leaving before other recipients read; `pytest -q -x` passed. |
+| D-07 | FIXED-VERIFIED | Conversation summaries use bounded queries and correlated unread counts instead of per-conversation lookups or loading unread rows. SQLAlchemy query-count regression with 50 conversations passes at no more than four statements. |
+| D-08 | FIXED-VERIFIED | Conversation and message history queries show retryable errors; API 401 clears auth; socket loss shows reconnect state. Playwright verifies list/history retry, logout, and reconnect UI. |
+| D-09 | FIXED-VERIFIED | Purging accepts an injectable clock and deletion broadcasts are asserted using TestClient WebSockets; lifespan cancels the worker. Playwright verifies an expired message vanishes without refresh. |
+| D-10 | FIXED-VERIFIED | Last group admin cannot leave or demote themselves without transferring administration; direct service/API regression tests pass. |
+| D-11 | FIXED-VERIFIED | Inter is loaded as a local variable font. Responsive layout fixes were captured in 30 Playwright screenshots (five views, 375/768/1280 widths, light/dark); layout tests pass. |
+| D-12 | FIXED-VERIFIED | Unauthorized WebSocket close clears the session and stops retries; transient disconnect renders a reconnect banner. Playwright covers both behaviors. |
+| D-13 | FIXED-VERIFIED | Concurrent direct-conversation unique-key conflict recovers the winning row; conflict regression test passes. |
+| D-14 | FIXED-VERIFIED | API orchestration routes through services; services no longer import API schemas; AST layering regression test passes. |
+| D-15 | FIXED-VERIFIED | Toast replacement cancels the prior timeout; browser regression verifies the newer toast remains visible. |
+| D-16 | NOT-FIXED | Legacy migration has a guard for older avatar schema variants, but it still does not rebuild legacy tables to enforce every fresh-model CHECK/cascade constraint. No claim of complete migration parity is made. |
+| D-17 | FIXED-VERIFIED | Removed unused JWT secret configuration/documentation and corrected WS payload documentation; env/config and README were reviewed against implementation. |
+
+### Commands and observed results
+
+Commands below ran against this workspace or a clean isolated copy of `frontend/` when noted. `npm ci` in the isolated copy avoids the Windows sandbox's existing workspace SWC `EPERM` problem while still validating the committed lockfile from a clean install.
+
+```text
+backend: pytest -q -x
+28 passed in 4.87s
+
+frontend clean copy: npm ci --no-audit --no-fund --prefer-offline
+added 752 packages in 55s
+frontend clean copy: npm run format:check
+All matched files use Prettier code style!
+frontend clean copy: npm run lint
+passed
+frontend clean copy: npm run typecheck
+passed
+frontend clean copy: npm run build
+Next.js production build passed
+frontend clean copy: npx playwright test
+10 passed (42.3s)
+
+live two-account smoke: python backend/scripts/smoke_e2e.py
+status passed; auth, direct chat, group creation, admin denial, typing,
+both-way messages, delivery and read receipts
+backend restart using the same SQLite file; smoke verify mode
+{"status":"persistence passed","message_id":"17325642-0882-491a-96c8-fe28602223af","group_id":"57145750-6d52-45da-b9f0-518827968117"}
+```
+
+The task-owned backend and frontend servers were stopped after the smoke run; a process query found no task-owned ports 8101–8200 or 3101–3103. The pre-existing development server on port 3000 was not started by this work and was left running. No hosted deployment, live production CORS check, or public GitHub check was performed. A broad deletion of pre-existing ignored upload data was rejected by the automatic review because it could remove user data; test cleanup now targets only files created by that test, and no further deletion was attempted.
