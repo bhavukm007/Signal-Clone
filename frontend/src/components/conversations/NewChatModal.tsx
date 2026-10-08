@@ -1,0 +1,12 @@
+'use client';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { contactApi, conversationApi } from '@/lib/chatApi';
+import { useUiStore } from '@/store/uiStore';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
+export function NewChatModal(){const open=useUiStore(s=>s.modal==='new-chat');const close=()=>useUiStore.getState().openModal(null);const [q,setQ]=useState('');const router=useRouter();const qc=useQueryClient();const term=useDebounce(q,250);const {data:contacts=[]}=useQuery({queryKey:['contacts'],queryFn:contactApi.list,enabled:open});const {data:users=[]}=useQuery({queryKey:['user-search',term],queryFn:()=>contactApi.search(term),enabled:open&&term.length>1});async function start(userId:string){try{const c=await conversationApi.direct(userId);await qc.invalidateQueries({queryKey:['conversations']});close();router.push(`/chat/${c.id}`)}catch{useUiStore.getState().notify('Could not start this conversation.')}}if(!open)return null;return <Modal title="New message" onClose={close}><Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name or number" aria-label="Find a contact"/><div className="modal-list">{contacts.map(c=><button className="contact-row" key={c.id} onClick={()=>void start(c.user.id)}><Avatar name={c.user.display_name} color={c.user.avatar_color}/><span>{c.nickname||c.user.display_name}</span></button>)}{users.filter(u=>!contacts.some(c=>c.user.id===u.id)).map(u=><button className="contact-row" key={u.id} onClick={()=>void start(u.id)}><Avatar name={u.display_name} color={u.avatar_color}/><span>{u.display_name} · {u.phone_number||u.username}</span></button>)}</div><Button onClick={()=>{close();useUiStore.getState().openModal('add-contact')}}>Add contact</Button><Button onClick={()=>{close();useUiStore.getState().openModal('create-group')}}>New group</Button></Modal>}

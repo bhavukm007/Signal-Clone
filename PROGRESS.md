@@ -10,7 +10,7 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 6. [x] Implement validated avatar and attachment uploads.
 7. [x] Implement expiring messages, cancellable purger, deletion broadcast, and tests.
 8. [x] Complete idempotent seed script with 8–10 users, demo accounts, contacts, varied DMs/groups/statuses/settings.
-9. [ ] Refactor frontend into the specified app/components/hooks/stores/lib/types layout with theme tokens.
+9. [x] Refactor frontend into the specified app/components/hooks/stores/lib/types layout with theme tokens.
 10. [ ] Complete welcome/register/verify/profile flow, persisted auth guard, profile avatar, settings logout.
 11. [ ] Complete conversation list, debounced conversation/contact search, compose flows, unread/pin/mute/presence states.
 12. [ ] Complete chat view: realtime, grouped/date-separated messages, receipts, typing, pagination, scroll behavior, optimistic sends, header, encryption placeholder.
@@ -36,3 +36,7 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 
 
 
+- Item 9: 
+pm run lint, 
+pm run typecheck, and 
+pm run build passed. Frontend now has route groups, typed API/model boundaries, Query/Zustand stores, reconnecting WebSocket client/hooks, reusable UI primitives, and CSS-variable light/dark tokens. Fixed App Router alias resolution and removed frontend lint warnings.
