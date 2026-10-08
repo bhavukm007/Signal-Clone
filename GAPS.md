@@ -1,28 +1,23 @@
 # Gap analysis
 
-This compares the committed first pass with the requested acceptance list. Full implementation is tracked in `PROGRESS.md`.
+Reviewed the first-pass README, API, tests, frontend source and deployment manifests before modifying the repository. This file records the remaining work after backend item 2.
 
-| Area | Current state | Required work |
+| Area | Status after checklist item 2 | Remaining work |
 |---|---|---|
-| Test harness | Tests use app-global file SQLite; no timeout plugin or TESTING gate | Isolated in-memory DB, dependency override, no startup seed/tasks in tests, TestClient REST + WebSocket tests, pytest-timeout |
-| Python runtime | Syntax/schema import worked; HTTP TestClient stalled during an earlier attempt | Isolate engine/lifespan and identify exact failure; run `pytest -x -q` |
-| Frontend toolchain | `npm install` was interrupted while network/package resolution stalled; no lockfile | Run bounded logged `npm ci`, fallback registry/package manager, lint/typecheck/build |
-| Backend architecture | Most implementation is a 300+ line `main.py`; routes directly query SQLAlchemy | Extract config, models, schemas, repositories, services, API routers, websocket manager/handlers |
-| Authentication | Reversible `demo-<user id>` bearer token; logout does not revoke | Opaque random tokens, SHA-256 token hashes in auth_sessions, expiration/revocation on REST and WS |
-| Database | Users, OTP, contacts, conversations, participants, messages, receipts, reactions only | Add auth_sessions, attachments, full timestamps/roles/read cursor/left-at, proper constraints/indexes |
-| Messaging | REST/WS send basics; receipt rows are created but delivery/read aggregation is incomplete | Idempotent service, delivery on connect/ack, read up to cursor, aggregate status, reply/edit/delete semantics |
-| Realtime | In-memory sockets and partial typing; no presence fanout, delivery reconnect, reaction WS, expiry | Multi-tab manager, last-socket presence, typing throttle/expire, all specified events, reconnect/resync |
-| Groups | Create, member listing/add/remove exist, limited admin enforcement | System messages/broadcasts, role changes, metadata edits, self leave, UI management |
-| Contacts | Add/list/delete/block endpoints added in prior pass but not backed by UI/test | Schema validation, search/integration in compose, contact modals and tests |
-| Uploads | None | Avatar and message uploads, MIME/size checks, static serving, attachment metadata and UI |
-| Disappearing | Timer column only | Expiry assignment, cancellable background purger, WS deleted event, visible timer and tests |
-| Seed | Ten users, nine direct chats and three group chats; missing contacts/reactions/replies/unread variety | Idempotent standalone seed module and richer fixture dataset matching requested counts/statuses |
-| Frontend architecture | One very compressed page and CSS; no route groups, stores, hooks or presentational boundaries | Split routes/components/hooks/stores/types/lib, accessible reusable UI, no API calls in view components |
-| Frontend behavior | Single-step fixed-OTP login, simple chat, settings stub, dark toggle | Full auth route progression, token guard, conversations/contact/group/settings/bonus behavior |
-| Deployment/docs | Basic Render/Docker/Vercel files and README | CI, robust env setup, exact beginner deployment steps, complete schema/event/API docs and interview notes |
-| Repository history | Three scaffold/backend/frontend commits | Continue one focused commit per completed checklist item |
+| Test runner | In-memory SQLite fixture, `TESTING=1` startup gate, 30-second pytest timeout, REST and WebSocket TestClient tests; suite passes with internal loopback IPC allowed | Keep extending meaningful backend coverage; sandbox blocks the Windows asyncio socketpair unless test process is approved outside it |
+| Frontend toolchain | `package-lock.json` created; npm ci, lint, typecheck, and production build pass | Resolve current React Hook warnings while moving UI into hooks/components |
+| Backend layering | `api/v1`, `services`, `repositories`, `models`, `schemas`, `core`, `db`, and `ws` modules exist; route handlers delegate logic; consistent validation/HTTP error envelope | Complete websocket events/manager and auth session dependency; add upload/purge semantics |
+| Database | All ten requested tables now exist with foreign keys, SQLite FK/WAL pragmas, unique/check constraints, read cursor, group fields, message metadata, receipts, reactions, attachments | Add regression tests for constraints/indexes and richer seed behaviors |
+| Authentication | OTP challenge and profile operations are separated into services | Replace demo bearer token with hashed durable sessions, expiry and revocation across REST and WS |
+| Messages/receipts | REST send is idempotent; receipt rows and read cursor schema exist; message status serialization is present | Delivery-on-connect, read/delivered events, aggregate checks, WS message send/typing/presence/reactions |
+| Groups | Group creation, member listing/add/remove/role editing API and admin checks live in services | System messages, conversation broadcasts, UI, and broader role tests |
+| Uploads | Route placeholder only; attachment schema exists | Validated storage, serving, metadata creation, avatar/attachment client flows |
+| Disappearing messages | Schema and timer patch path exist | Cancellable purge task and deleted events; fully exercise timer lifecycle |
+| Seed | 10 users, 9 DMs × 18 messages, and 3 groups × 16 messages generated on empty DB | Contacts, reactions/replies, unread diversity, proper system-message text, standalone idempotency verification |
+| Frontend | Current single page still builds but is compressed and tightly coupled | Prescribed route/component/hooks/store/lib structure and all flows in items 9–16 |
+| Deployment/docs | Basic Docker/Render/Vercel manifests exist | CI, complete beginner deploy guide, final README, interview notes, smoke run |
 
-## Verification constraints observed so far
+## Verification constraints
 
-- A previous test client command constructed `TestClient` without entering its context manager and stalled. That does not establish a sandbox socket limitation; item 1 will fix the fixture and retest in-process.
-- npm installation did not finish in the earlier pass. It must be retried with the bounded logging and registry fallbacks from the task instructions.
+- `TestClient` uses an AnyIO Windows loopback socketpair internally; under the restricted shell it blocks before the app request executes. Running the in-process suite via the reviewed escalation path passes; the test code itself performs no external network requests.
+- npm registry access required the reviewed escalation path after the sandbox returned `ENOTFOUND`; a lockfile is now present and reproducible `npm ci` succeeded.

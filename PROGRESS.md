@@ -3,7 +3,7 @@
 Status values: `[ ]` pending, `[x]` completed. Completion requires passing verification or a documented CI-only/unverified status in item 21.
 
 1. [x] Make backend tests runnable and green using in-memory SQLite, TESTING lifespan gate, `pytest-timeout`, and TestClient REST/WebSocket; install frontend dependencies and pass lint/typecheck/build.
-2. [ ] Refactor backend into API → services → repositories → models; add all specified tables, schemas, constraints, indexes, and consistent errors.
+2. [x] Refactor backend into API → services → repositories → models; add all specified tables, schemas, constraints, indexes, and consistent errors.
 3. [ ] Implement durable hashed auth sessions with expiry and revocation, enforced on REST and WebSocket.
 4. [ ] Implement sent/delivered/read receipts, group aggregation, online/last-seen presence, typing, and WebSocket tests.
 5. [ ] Complete groups with server-side admin rules, system messages, broadcasts, and tests.
@@ -26,7 +26,7 @@ Status values: `[ ]` pending, `[x]` completed. Completion requires passing verif
 
 ## Verification log
 
-- Initial gap review: `README.md`, backend API, current tests, frontend page/layout/styles, package/deployment manifests read on 2026-10-08.
-- Item 1 verified by running: `python -m pytest -x -q` → 4 passed; `npm ci --no-audit --no-fund --prefer-offline`; `npm run lint`; `npm run typecheck`; `npm run build` all exit 0. Lint/build currently emit 3 React hook dependency warnings to fix during frontend refactor.
-- The TestClient run required the reviewed unsandboxed execution path because AnyIO's Windows event loop creates an internal local socketpair; this was test harness IPC, not an external app/network request. The tests use in-memory SQLite and no app server sockets.
-- `pytest-timeout==2.4.0` installed and configured to 30 seconds. `TESTING=1` skips startup database/seed work; tests override `get_db` with `StaticPool` in-memory SQLite.
+- Item 1: `python -m pytest -x -q` → 6 passed, including an in-process TestClient WebSocket ping; `npm ci --no-audit --no-fund --prefer-offline`, `npm run lint`, `npm run typecheck`, and `npm run build` all exited 0. React Hook warnings remain and are tracked for the frontend refactor.
+- Item 2: `python -m compileall -q app tests` passed; `python -m pytest -x -q` → 6 passed after modularization; `app.openapi()` registered 24 HTTP routes before the final ping route was added. All expected table names are asserted by a test.
+- The test suite uses `sqlite://` with `StaticPool`, `check_same_thread=False`, overrides `get_db`, and sets `TESTING=1`; production lifespan creates tables and seeds only outside test mode.
+- The backend and frontend installs needed the approved network/runtime execution path because package networking and Windows asyncio's internal socketpair are blocked in the default shell sandbox.

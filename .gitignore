@@ -8,3 +8,4 @@ __pycache__
 backend/signal.db
 backend/uploads/*
 !backend/uploads/.gitkeep
+*.tsbuildinfo

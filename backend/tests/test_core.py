@@ -62,3 +62,20 @@ def test_group_admin_rules(client: TestClient) -> None:
 def test_in_memory_test_database_starts_empty(client: TestClient) -> None:
     result = login(client, '+91 91111 11111')
     assert result['is_new_user'] is True
+
+
+def test_complete_schema_is_registered() -> None:
+    from app.main import Base
+
+    assert {
+        'users', 'auth_sessions', 'otp_challenges', 'contacts', 'conversations',
+        'conversation_participants', 'messages', 'message_receipts',
+        'message_reactions', 'attachments',
+    } <= set(Base.metadata.tables)
+
+
+def test_websocket_ping_round_trip(client: TestClient) -> None:
+    result = login(client, '+91 90000 00003')
+    with client.websocket_connect(f"/ws?token={result['token']}") as websocket:
+        websocket.send_json({'type': 'ping', 'payload': {}})
+        assert websocket.receive_json() == {'type': 'pong', 'payload': {}}
