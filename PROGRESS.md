@@ -17,7 +17,7 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 13. [x] Complete group create/info/member administration UI.
 14. [x] Complete settings sections, coming-soon flows, toasts.
 15. [x] Complete attachments, reactions, replies, disappearing UI, responsive layouts, shortcuts.
-16. [ ] Pixel polish and accessibility pass against specified tokens and layout.
+16. [x] Pixel polish and accessibility pass against specified tokens and layout.
 17. [ ] Script and pass two-account end-to-end smoke flow including realtime, groups, receipts, and restart persistence.
 18. [ ] Finalize Render/Vercel config and write beginner deployment guide.
 19. [ ] Finalize README with architecture, schema, API/WS tables, state machine, checklist, assumptions, limitations, deployment, tests.
@@ -41,5 +41,6 @@ Status: `[ ]` pending, `[x]` completed. Final verification status is recorded in
 - Item 13: group compose picks contacts; group info lists members and admin badges, allows admin-only edits/add/remove/promote/demote, and supports self-leave. All mutations use API client methods, refresh cached details/lists, and surface errors; backend enforces privileges and its group tests pass. Frontend lint/typecheck/build passed.
 - Item 14: settings now edit profile/about/avatar, persist privacy and notification preferences, persist and apply system/light/dark theme, and expose Linked devices/Stories/Calls placeholders. New incoming inactive-chat messages and errors surface as dismissible toasts. Read receipts and typing preferences control their respective events. Frontend lint/typecheck/build passed.
 - Item 15: attachments stage before send, file chips and image previews/lightbox work, emoji insertion and reaction toggling work, replies quote/scroll, per-chat disappearing timers are configurable and shown in the list, mobile back/single-pane behavior works, and keyboard shortcuts cover compose/search/close/chat navigation/send. Backend tests: 17 passed; frontend lint/typecheck/build passed.
+- Item 16: applied the requested token palette, 340–380px conversation pane, bubble geometry/metadata, hover reactions, thin scrollbars, visible keyboard focus, reduced-motion support, responsive breakpoints, meaningful time labels, original SVG chat mark, and modal focus trapping. Added Prettier and CI format checking. `npm run format:check`, lint, typecheck, build, and backend 17-test suite passed.
 - Backend tests use `sqlite://` with `StaticPool`, `check_same_thread=False`, dependency overrides, `TESTING=1`, and a 30-second timeout. Production lifespan creates and seeds only outside test mode.
 - Windows sandbox blocks TestClient's local asyncio socketpair and generated Next.js build directories without elevated execution. The backend uses in-process TestClient, and checked runs passed through the reviewed execution path. npm registry access also required reviewed network execution.

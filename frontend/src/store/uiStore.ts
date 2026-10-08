@@ -14,21 +14,26 @@ interface UiState {
   openModal: (name: string | null) => void;
 }
 
-export const useUiStore = create<UiState>()(persist((set) => ({
-  theme: 'system',
-  toast: null,
-  setTheme: (theme) => set({ theme }),
-  notify: (message) => {
-    set({ toast: message });
-    window.setTimeout(() => set({ toast: null }), 3000);
-  },
-  clearToast: () => set({ toast: null }),
-  searchQuery: '',
-  modal: null,
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
-  openModal: (modal) => set({ modal }),
-}), {
-  name: 'signal-ui',
-  storage: createJSONStorage(() => localStorage),
-  partialize: (state) => ({ theme: state.theme }) as UiState,
-}));
+export const useUiStore = create<UiState>()(
+  persist(
+    (set) => ({
+      theme: 'system',
+      toast: null,
+      setTheme: (theme) => set({ theme }),
+      notify: (message) => {
+        set({ toast: message });
+        window.setTimeout(() => set({ toast: null }), 3000);
+      },
+      clearToast: () => set({ toast: null }),
+      searchQuery: '',
+      modal: null,
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+      openModal: (modal) => set({ modal }),
+    }),
+    {
+      name: 'signal-ui',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ theme: state.theme }) as UiState,
+    },
+  ),
+);

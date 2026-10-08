@@ -17,11 +17,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [validatedToken, setValidatedToken] = useState<string | null>(null);
   useEffect(() => {
     if (!hydrated) return;
-    if (!token) { router.replace('/welcome'); return; }
-    void authApi.me().then((freshUser) => { setUser(freshUser); setValidatedToken(token); })
-      .catch(() => { setValidatedToken(null); useAuthStore.getState().clearSession(); router.replace('/welcome'); });
+    if (!token) {
+      router.replace('/welcome');
+      return;
+    }
+    void authApi
+      .me()
+      .then((freshUser) => {
+        setUser(freshUser);
+        setValidatedToken(token);
+      })
+      .catch(() => {
+        setValidatedToken(null);
+        useAuthStore.getState().clearSession();
+        router.replace('/welcome');
+      });
   }, [hydrated, token, setUser, router]);
-  if (!hydrated || (token && (!user || validatedToken !== token))) return <main className="loading-screen"><Spinner /></main>;
+  if (!hydrated || (token && (!user || validatedToken !== token)))
+    return (
+      <main className="loading-screen">
+        <Spinner />
+      </main>
+    );
   if (!token || !user) return null;
-  return <WebSocketProvider><div className="app-shell"><Sidebar /><main className="app-main">{children}</main></div><NewChatModal/>{activeConversationId&&<GroupInfoPanel conversationId={activeConversationId}/>}</WebSocketProvider>;
+  return (
+    <WebSocketProvider>
+      <div className="app-shell">
+        <Sidebar />
+        <main className="app-main">{children}</main>
+      </div>
+      <NewChatModal />
+      {activeConversationId && <GroupInfoPanel conversationId={activeConversationId} />}
+    </WebSocketProvider>
+  );
 }

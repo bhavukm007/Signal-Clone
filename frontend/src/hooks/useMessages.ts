@@ -22,7 +22,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
     queryKey: ['messages', conversationId],
     queryFn: ({ pageParam }) => messageApi.list(conversationId, pageParam),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (page) => page.length === 30 ? page[0]?.id : undefined,
+    getNextPageParam: (page) => (page.length === 30 ? page[0]?.id : undefined),
     enabled: Boolean(conversationId),
   });
   const history = useMemo(() => [...(query.data?.pages ?? [])].reverse().flat(), [query.data]);
@@ -55,7 +55,8 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
         optimistic: true,
       };
       addMessage(optimistic);
-      return messageApi.send(conversationId, input.body, clientMessageId, input.replyToId, input.attachmentIds)
+      return messageApi
+        .send(conversationId, input.body, clientMessageId, input.replyToId, input.attachmentIds)
         .then((message) => ({ message, clientMessageId }));
     },
     onSuccess: ({ message, clientMessageId }) => {
@@ -79,9 +80,9 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
     const latestId = uniqueMessages.at(-1)?.id;
     if (!latestId || !readReceipts || latestId === lastReadId.current) return;
     lastReadId.current = latestId;
-    void messageApi.markRead(conversationId, latestId).then(() =>
-      queryClient.invalidateQueries({ queryKey: ['conversations'] }),
-    );
+    void messageApi
+      .markRead(conversationId, latestId)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['conversations'] }));
     sendEvent('conversation.read', {
       conversation_id: conversationId,
       up_to_message_id: latestId,

@@ -22,8 +22,16 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
     chat.addMessage(data.message);
     const currentUserId = useAuthStore.getState().user?.id;
     const notificationsEnabled = usePreferencesStore.getState().messageNotifications;
-    if (notificationsEnabled && data.message.sender_id !== currentUserId && chat.activeConversationId !== data.message.conversation_id) {
-      useUiStore.getState().notify(`${data.message.sender.display_name}: ${data.message.body || 'Sent an attachment'}`);
+    if (
+      notificationsEnabled &&
+      data.message.sender_id !== currentUserId &&
+      chat.activeConversationId !== data.message.conversation_id
+    ) {
+      useUiStore
+        .getState()
+        .notify(
+          `${data.message.sender.display_name}: ${data.message.body || 'Sent an attachment'}`,
+        );
     }
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     void queryClient.invalidateQueries({ queryKey: ['messages', data.message.conversation_id] });
@@ -42,10 +50,13 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
     if (existing !== undefined) window.clearTimeout(existing);
     chat.setTyping(typing.conversation_id, typing.user_id, typing.is_typing);
     if (typing.is_typing) {
-      typingExpiry.set(key, window.setTimeout(() => {
-        useChatStore.getState().setTyping(typing.conversation_id, typing.user_id, false);
-        typingExpiry.delete(key);
-      }, 5000));
+      typingExpiry.set(
+        key,
+        window.setTimeout(() => {
+          useChatStore.getState().setTyping(typing.conversation_id, typing.user_id, false);
+          typingExpiry.delete(key);
+        }, 5000),
+      );
     } else typingExpiry.delete(key);
   } else if (frame.type === 'presence') {
     const presence = payload as { user_id: string; is_online: boolean };
@@ -54,29 +65,45 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
   } else if (frame.type === 'conversation.updated') {
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     const conversationId = String(payload.conversation_id ?? '');
-    if (conversationId) void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+    if (conversationId)
+      void queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
   } else if (frame.type === 'reaction.updated') {
     void queryClient.invalidateQueries({ queryKey: ['messages'] });
   } else if (frame.type === 'error') {
-    window.dispatchEvent(new CustomEvent('signal-error', { detail: String(payload.message ?? 'Realtime error') }));
+    window.dispatchEvent(
+      new CustomEvent('signal-error', { detail: String(payload.message ?? 'Realtime error') }),
+    );
   }
 }
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
   const token = useAuthStore((state) => state.token);
   const queryClient = useQueryClient();
-  const client = useMemo(() => token ? new WsClient(token, (frame) => applyEvent(frame, queryClient), () => {
-    void queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    const active = useChatStore.getState().activeConversationId;
-    if (active) void queryClient.invalidateQueries({ queryKey: ['messages', active] });
-  }) : null, [token, queryClient]);
+  const client = useMemo(
+    () =>
+      token
+        ? new WsClient(
+            token,
+            (frame) => applyEvent(frame, queryClient),
+            () => {
+              void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              const active = useChatStore.getState().activeConversationId;
+              if (active) void queryClient.invalidateQueries({ queryKey: ['messages', active] });
+            },
+          )
+        : null,
+    [token, queryClient],
+  );
 
   useEffect(() => {
     client?.connect();
     return () => client?.dispose();
   }, [client]);
 
-  const send = useMemo<SendEvent>(() => (type, payload) => client?.send(type, payload) ?? false, [client]);
+  const send = useMemo<SendEvent>(
+    () => (type, payload) => client?.send(type, payload) ?? false,
+    [client],
+  );
   return <SocketContext.Provider value={send}>{children}</SocketContext.Provider>;
 }
 

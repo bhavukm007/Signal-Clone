@@ -7,7 +7,8 @@ interface PresenceState {
 
 export const usePresenceStore = create<PresenceState>((set) => ({
   onlineUserIds: {},
-  setPresence: (userId, isOnline) => set((state) => ({
-    onlineUserIds: { ...state.onlineUserIds, [userId]: isOnline },
-  })),
+  setPresence: (userId, isOnline) =>
+    set((state) => ({
+      onlineUserIds: { ...state.onlineUserIds, [userId]: isOnline },
+    })),
 }));

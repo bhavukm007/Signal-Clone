@@ -18,7 +18,6 @@ export interface Attachment {
   url: string;
 }
 
-
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type MessageType = 'text' | 'image' | 'file' | 'system';
 

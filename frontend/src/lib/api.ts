@@ -5,7 +5,11 @@ export const API_BASE_URL = configuredUrl.replace(/\/$/, '');
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, '');
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status: number, public readonly code: string) {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code: string,
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -20,7 +24,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   if (!response.ok) {
-    const data = await response.json().catch(() => null) as {
+    const data = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string };
     } | null;
     throw new ApiError(

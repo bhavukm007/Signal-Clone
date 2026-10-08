@@ -17,21 +17,27 @@ export function useTyping(send: SendEvent, conversationId: string) {
     started.current = false;
   }, [conversationId, send]);
 
-  const activity = useCallback((value: string) => {
-    if (!enabled) { stop(); return; }
-    if (!value.trim()) {
-      stop();
-      return;
-    }
-    if (stopTimer.current !== null) window.clearTimeout(stopTimer.current);
-    if (!started.current && startTimer.current === null) {
-      startTimer.current = window.setTimeout(() => {
-        startTimer.current = null;
-        started.current = send('typing.start', { conversation_id: conversationId });
-      }, 300);
-    }
-    stopTimer.current = window.setTimeout(stop, 1700);
-  }, [conversationId, enabled, send, stop]);
+  const activity = useCallback(
+    (value: string) => {
+      if (!enabled) {
+        stop();
+        return;
+      }
+      if (!value.trim()) {
+        stop();
+        return;
+      }
+      if (stopTimer.current !== null) window.clearTimeout(stopTimer.current);
+      if (!started.current && startTimer.current === null) {
+        startTimer.current = window.setTimeout(() => {
+          startTimer.current = null;
+          started.current = send('typing.start', { conversation_id: conversationId });
+        }, 300);
+      }
+      stopTimer.current = window.setTimeout(stop, 1700);
+    },
+    [conversationId, enabled, send, stop],
+  );
 
   useEffect(() => () => stop(), [stop]);
   return activity;
