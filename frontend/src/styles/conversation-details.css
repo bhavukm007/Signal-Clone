@@ -99,12 +99,7 @@
   color: var(--signal-blue);
   cursor: pointer;
 }
-.photo-upload input {
-  max-width: 210px;
-  color: var(--signal-muted);
-}
-.photo-upload input::file-selector-button {
-  margin-right: 10px;
+.photo-upload-button {
   padding: 7px 12px;
   border: 1px solid var(--signal-divider);
   border-radius: 18px;
@@ -112,6 +107,9 @@
   color: var(--signal-text);
   font: inherit;
   cursor: pointer;
+}
+.photo-upload-button:hover {
+  filter: brightness(0.95);
 }
 .group-summary {
   text-align: center;

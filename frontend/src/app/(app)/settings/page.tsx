@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { authApi } from '../../../lib/auth';
@@ -22,6 +22,7 @@ export default function Settings() {
   const [displayName, setDisplayName] = useState('');
   const [about, setAbout] = useState('');
   const [saving, setSaving] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setDisplayName(user?.display_name || '');
     setAbout(user?.about || '');
@@ -90,14 +91,27 @@ export default function Settings() {
           maxLength={140}
           onChange={(event) => setAbout(event.target.value)}
         />
-        <label className="photo-upload">
-          Update profile photo
+        <div className="photo-upload">
+          <span>Update profile photo</span>
+          <button
+            type="button"
+            className="photo-upload-button"
+            onClick={() => avatarInput.current?.click()}
+          >
+            Choose a photo
+          </button>
           <input
+            ref={avatarInput}
+            hidden
+            aria-label="Profile photo file"
             type="file"
             accept="image/*"
-            onChange={(event) => void updateAvatar(event.target.files?.[0])}
+            onChange={(event) => {
+              void updateAvatar(event.target.files?.[0]);
+              event.target.value = '';
+            }}
           />
-        </label>
+        </div>
         <Button
           variant="primary"
           disabled={!displayName.trim() || saving}

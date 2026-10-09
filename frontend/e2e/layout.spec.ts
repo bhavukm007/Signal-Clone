@@ -144,6 +144,7 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
 
       await page.goto('/settings');
       await expect(page.locator('.settings-page')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Choose a photo' })).toBeVisible();
       if (width === 375)
         await expect(page.getByRole('button', { name: 'Back to chats' })).toBeVisible();
       await capture(page, theme, width, 'settings');
