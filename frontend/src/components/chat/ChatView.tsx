@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, Video, MoreVertical, Search, ShieldCheck, X } from 'lucide-react';
 import Image from 'next/image';
-import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
@@ -19,6 +18,7 @@ import type { Attachment } from '@/types/models';
 import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
 import { MessageTimeline } from '@/components/chat/MessageTimeline';
 import { MessageComposer } from '@/components/chat/MessageComposer';
+import { lastSeenTime } from '@/lib/formatters';
 
 export function ChatView() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -106,11 +106,7 @@ export function ChatView() {
     : messages;
   function submit() {
     if (!draft.trim() && !pendingAttachments.length) return;
-    sendMessage(
-      draft.trim(),
-      reply ?? undefined,
-      pendingAttachments.map((item) => item.id),
-    );
+    sendMessage(draft.trim(), reply ?? undefined, pendingAttachments);
     setDraft('');
     setReply(null);
     setPendingAttachments([]);
@@ -140,7 +136,7 @@ export function ChatView() {
               : peer && (presence[peer.id] ?? false)
                 ? 'online'
                 : peer?.last_seen_at
-                  ? `last seen ${format(new Date(peer.last_seen_at), 'MMM d, h:mm a')}`
+                  ? `last seen ${lastSeenTime(peer.last_seen_at)}`
                   : 'offline'}
           </small>
         </div>

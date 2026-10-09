@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.core.datetime import utc_iso
 
 
 def serialize_user(user: User) -> dict[str, object]:
@@ -12,5 +13,5 @@ def serialize_user(user: User) -> dict[str, object]:
         'avatar_url': user.avatar_url,
         'avatar_color': user.avatar_color,
         'is_online': user.is_online,
-        'last_seen_at': user.last_seen_at.isoformat(),
+        'last_seen_at': utc_iso(user.last_seen_at),
     }

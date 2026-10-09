@@ -5,6 +5,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
+from app.core.datetime import utc_iso
 from app.models.message import Attachment, Message, Reaction, Receipt
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
@@ -309,10 +310,10 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'body': message.body,
         'type': message.type,
         'client_message_id': message.client_message_id,
-        'created_at': message.created_at.isoformat(),
-        'edited_at': message.edited_at.isoformat() if message.edited_at else None,
-        'deleted_at': message.deleted_at.isoformat() if message.deleted_at else None,
-        'expires_at': message.expires_at.isoformat() if message.expires_at else None,
+        'created_at': utc_iso(message.created_at),
+        'edited_at': utc_iso(message.edited_at) if message.edited_at else None,
+        'deleted_at': utc_iso(message.deleted_at) if message.deleted_at else None,
+        'expires_at': utc_iso(message.expires_at) if message.expires_at else None,
         'reply_to_id': message.reply_to_id,
         'status': aggregate_status(db, message.id),
         'reactions': [

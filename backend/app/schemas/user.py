@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from app.core.datetime import utc_iso
 
 
 class UserOut(BaseModel):
@@ -13,6 +14,10 @@ class UserOut(BaseModel):
     avatar_color: str
     is_online: bool
     last_seen_at: datetime
+
+    @field_serializer('last_seen_at')
+    def serialize_last_seen_at(self, value: datetime) -> str:
+        return utc_iso(value)
 
 
 class ProfileUpdate(BaseModel):

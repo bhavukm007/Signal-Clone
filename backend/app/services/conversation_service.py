@@ -3,9 +3,9 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
-from app.db.base import utc_now
 from app.models.conversation import Conversation, Participant
-from app.models.message import Message
+from app.models.message import Attachment, Message
+from app.core.datetime import utc_iso
 from app.models.contact import Contact
 from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
@@ -77,6 +77,7 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
             Participant.is_archived.is_(False),
         )
     ).all()
+    rows.sort(key=lambda row: (not row[0].is_pinned, -row[1].last_activity_at.timestamp()))
     conversation_ids = [conversation.id for _membership, conversation, _count in rows]
     participant_rows = db.execute(
         select(Participant.conversation_id, User)
@@ -120,22 +121,22 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
                 'sender': serialize_user(sender),
                 'body': message.body,
                 'type': message.type,
-                'created_at': message.created_at.isoformat(),
+                'created_at': utc_iso(message.created_at),
             }
         result.append({
             'id': conversation.id, 'type': conversation.type, 'title': title,
             'participants': [serialize_user(peer) for peer in peers],
             'last_message': preview,
-            'last_activity_at': conversation.last_activity_at,
+            'last_activity_at': utc_iso(conversation.last_activity_at),
             'unread_count': unread, 'is_pinned': membership.is_pinned,
-            'muted_until': membership.muted_until,
+            'muted_until': utc_iso(membership.muted_until) if membership.muted_until else None,
             'is_online': bool(first_peer and first_peer.is_online),
-            'last_seen_at': first_peer.last_seen_at if first_peer else None,
+            'last_seen_at': utc_iso(first_peer.last_seen_at) if first_peer else None,
             'avatar_color': first_peer.avatar_color if first_peer else '#3A76F0',
             'disappearing_timer_seconds': conversation.disappearing_timer_seconds,
             'is_blocked_by_me': bool(first_peer and (user.id, first_peer.id) in blocked_pairs),
         })
-    return sorted(result, key=lambda item: (not item['is_pinned'], -item['last_activity_at'].timestamp()))
+    return result
 
 
 def update_conversation(
@@ -170,7 +171,7 @@ def detail(db: Session, user: User, conversation_id: str) -> dict[str, object]:
         'description': conversation.description,
         'disappearing_timer_seconds': conversation.disappearing_timer_seconds,
         'participants': [
-            {'role': row.role, 'user': user_repository.by_id(db, row.user_id)}
+            {'role': row.role, 'user': serialize_user(user_repository.by_id(db, row.user_id))}
             for row in conversation_repository.participants(db, conversation_id)
         ],
         'is_blocked_by_me': _peer_block_state(db, conversation, user.id, True),

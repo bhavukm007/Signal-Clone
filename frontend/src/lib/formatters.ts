@@ -1,7 +1,19 @@
 import { differenceInCalendarDays, format, isToday, isYesterday } from 'date-fns';
+import type { Attachment } from '@/types/models';
 
 export function fullTime(value: string): string {
   return format(new Date(value), 'p');
+}
+
+export function lastSeenTime(value: string): string {
+  return format(new Date(value), 'MMM d, h:mm a');
+}
+
+export function messagePreviewText(body: string, attachments: readonly Attachment[]): string {
+  if (body.trim()) return body;
+  const first = attachments[0];
+  if (!first) return 'Start a conversation';
+  return first.mime_type.startsWith('image/') ? 'Photo' : `📎 ${first.file_name}`;
 }
 
 export function initials(name: string): string {

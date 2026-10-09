@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.message import MessageCreate, ReactionInput
 from app.services import message_service, realtime_service
+from app.core.datetime import utc_iso
 
 router = APIRouter(tags=['messages'])
 
@@ -43,7 +44,7 @@ async def delete_message(
     user: User = Depends(get_current_user),
 ):
     message = await message_service.delete_and_broadcast(db, user, message_id)
-    return {'id': message.id, 'deleted_at': message.deleted_at}
+    return {'id': message.id, 'deleted_at': utc_iso(message.deleted_at)}
 
 
 @router.put('/messages/{message_id}/reaction')

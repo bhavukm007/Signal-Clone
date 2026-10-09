@@ -12,6 +12,7 @@ from app.models.user import User
 from app.repositories import conversation_repository, message_repository
 from app.repositories.contact_repository import is_blocked
 from app.services import message_service
+from app.core.datetime import utc_iso
 from app.ws.events import EventType
 from app.ws.manager import manager
 
@@ -159,6 +160,6 @@ async def presence_changed(
         {
             'user_id': user_id,
             'is_online': is_online,
-            'last_seen_at': last_seen_at.isoformat() if last_seen_at else None,
+            'last_seen_at': utc_iso(last_seen_at) if last_seen_at else None,
         },
     )
