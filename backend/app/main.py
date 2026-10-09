@@ -12,7 +12,6 @@ from app.api.v1.router import router as api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.seed import seed_if_empty
-from app.db.migrations import upgrade_legacy_schema
 from app.db.session import SessionLocal, engine, get_db
 from app import models
 from app.ws.router import router as websocket_router
@@ -27,7 +26,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if not settings.testing:
         settings.upload_dir.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(engine)
-        upgrade_legacy_schema(engine)
         with SessionLocal() as session:
             seed_if_empty(session)
         workers = [
