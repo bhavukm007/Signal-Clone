@@ -82,6 +82,11 @@ export const contactApi = {
       method: 'POST',
       body: JSON.stringify({ identifier }),
     }),
+  addById: (user_id: string) =>
+    apiRequest<Contact>('/contacts', {
+      method: 'POST',
+      body: JSON.stringify({ user_id }),
+    }),
   remove: (id: string) => apiRequest(`/contacts/${id}`, { method: 'DELETE' }),
   block: (id: string) => apiRequest(`/contacts/${id}/block`, { method: 'POST' }),
   setBlocked: (userId: string, isBlocked: boolean) =>

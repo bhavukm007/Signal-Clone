@@ -17,7 +17,11 @@ export function Modal({ title, onClose, children }: ModalProps) {
   useEffect(() => {
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    card.current?.querySelector<HTMLElement>('input, button, select, textarea, a[href]')?.focus();
+    const autofocus = card.current?.querySelector<HTMLElement>('[data-autofocus]');
+    (
+      autofocus ??
+      card.current?.querySelector<HTMLElement>('input, button, select, textarea, a[href]')
+    )?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closeHandler.current();

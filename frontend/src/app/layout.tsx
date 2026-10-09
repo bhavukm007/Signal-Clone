@@ -9,6 +9,7 @@ import '../styles/responsive.css';
 import '../styles/conversation-details.css';
 import '../styles/attachments.css';
 import '../styles/utilities.css';
+import '../styles/contacts.css';
 
 export const metadata = {
   title: 'Signal',
