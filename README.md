@@ -212,8 +212,8 @@ Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP req
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `PUT /auth/profile`, `POST /auth/logout`, `GET /auth/me` |
-| Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar`, `PUT /contacts/users/{user_id}/block` |
-| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block`, `PUT /contacts/{contact_id}/block` |
+| Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar` |
+| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block`, `PUT /contacts/{contact_id}/block`, `PUT /contacts/users/{user_id}/block` |
 | Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
 | Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
 | Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
