@@ -2,6 +2,20 @@ from fastapi.testclient import TestClient
 from test_core import login
 
 
+def test_health_fails_when_database_is_unavailable(client: TestClient, monkeypatch) -> None:
+    from app import main
+    from sqlalchemy.exc import OperationalError
+
+    class UnavailableEngine:
+        def connect(self):
+            raise OperationalError('SELECT 1', {}, RuntimeError('database unavailable'))
+
+    monkeypatch.setattr(main, 'engine', UnavailableEngine())
+    response = client.get('/health')
+    assert response.status_code == 503
+    assert response.json() == {'status': 'not_ready'}
+
+
 def test_disappearing_timer_purges_and_broadcasts_delete(client: TestClient, db_session) -> None:
     from datetime import timedelta
     from sqlalchemy import select

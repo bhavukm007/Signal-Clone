@@ -82,6 +82,7 @@ def main() -> None:
     args = parser.parse_args()
     with httpx.Client(base_url=args.base_url, timeout=15) as client:
         first = login(client, '+91 90000 00001')
+        assert first['is_new_user'] is False, 'startup did not seed the first demo account'
         if args.verify_conversation and args.verify_message and args.verify_group:
             headers = {'Authorization': f"Bearer {first['token']}"}
             detail = client.get(f'/api/v1/conversations/{args.verify_conversation}', headers=headers)
@@ -94,6 +95,7 @@ def main() -> None:
             print(json.dumps({'status': 'persistence passed', 'message_id': args.verify_message, 'group_id': args.verify_group}))
             return
         second = login(client, '+91 90000 00002')
+        assert second['is_new_user'] is False, 'startup did not seed the second demo account'
         first_user = first['user']
         second_user = second['user']
         headers = {'Authorization': f"Bearer {first['token']}"}

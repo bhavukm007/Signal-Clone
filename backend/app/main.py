@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import router as api_router
@@ -93,8 +94,13 @@ async def handle_validation_error(_request: Request, exc: RequestValidationError
     )
 
 
-@app.get('/health')
-def health() -> dict[str, str]:
+@app.get('/health', response_model=None)
+def health() -> JSONResponse | dict[str, str]:
+    try:
+        with engine.connect() as connection:
+            connection.exec_driver_sql('SELECT 1')
+    except SQLAlchemyError:
+        return JSONResponse(status_code=503, content={'status': 'not_ready'})
     return {'status': 'ok'}
 
 
