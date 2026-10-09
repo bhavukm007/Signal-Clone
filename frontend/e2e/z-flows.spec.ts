@@ -86,8 +86,13 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
     'light',
     '+91 90000 00002',
   );
+  const firstRealtime = firstPage.waitForEvent('websocket');
+  const secondRealtime = secondPage.waitForEvent('websocket');
   await firstPage.goto(`/chat/${group.id}`);
   await secondPage.goto(`/chat/${group.id}`);
+  await Promise.all([firstRealtime, secondRealtime]);
+  await expect(firstPage.locator('.message-list')).toBeVisible();
+  await expect(secondPage.locator('.message-list')).toBeVisible();
   const body = `Group receipt ${randomUUID()}`;
   await firstPage.getByPlaceholder('Write a message…').fill(body);
   await firstPage.getByRole('button', { name: 'Send' }).click();
