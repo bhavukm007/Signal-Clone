@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Browser, Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { resolveWebSocketUrl } from '../src/lib/constants';
 
 const api = `${process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:8000'}/api/v1`;
 const screenshots = process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? '../docs/screenshots';
@@ -10,6 +11,14 @@ const viewports = [
   { width: 768, height: 1024 },
   { width: 1280, height: 800 },
 ];
+
+test('WebSocket URL derives secure and local schemes and honors an explicit override', () => {
+  expect(resolveWebSocketUrl('https://api.example.test/api/v1')).toBe('wss://api.example.test/ws');
+  expect(resolveWebSocketUrl('http://localhost:8000/api/v1/')).toBe('ws://localhost:8000/ws');
+  expect(
+    resolveWebSocketUrl('https://ignored.example/api/v1', 'wss://socket.example.test/custom'),
+  ).toBe('wss://socket.example.test/custom');
+});
 
 async function createSession(identifier = '+91 90000 00001') {
   await fetch(`${api}/auth/request-otp`, {
