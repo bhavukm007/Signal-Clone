@@ -4,10 +4,31 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import ProfileUpdate, UserOut
+from app.schemas.user import DiscoverabilityUpdate, ProfileUpdate, UserOut, UserSuggestion
 from app.services import auth_service, upload_service, user_service
 
 router = APIRouter(prefix='/users', tags=['users'])
+
+
+@router.get('/suggestions', response_model=list[UserSuggestion])
+def get_suggestions(
+    limit: int = 8,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return user_service.suggestions(db, user, limit)
+
+
+@router.patch('/me/discoverability', response_model=UserOut)
+def update_discoverability(
+    body: DiscoverabilityUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    user_service.set_discoverability(user, body.is_discoverable)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.get('/search', response_model=list[UserOut])

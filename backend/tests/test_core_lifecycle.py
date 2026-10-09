@@ -79,7 +79,9 @@ def test_seed_data_is_complete_and_idempotent(db_session, client: TestClient) ->
 
     assert seed_if_empty(db_session) is True
     assert seed_if_empty(db_session) is False
-    assert db_session.scalar(select(func.count(User.id))) == 10
+    assert db_session.scalar(select(func.count(User.id))) == 11
+    bot = db_session.scalar(select(User).where(User.username == 'signal-welcome'))
+    assert bot is not None and bot.about == 'Demo account'
     assert db_session.scalar(select(func.count(Contact.id))) == 60
     assert db_session.scalar(select(func.count(Conversation.id)).where(Conversation.type == 'direct')) == 9
     assert db_session.scalar(select(func.count(Conversation.id)).where(Conversation.type == 'group')) == 3

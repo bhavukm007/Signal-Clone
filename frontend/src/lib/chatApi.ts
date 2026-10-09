@@ -7,6 +7,7 @@ import type {
   ConversationDetail,
   Message,
   User,
+  UserSuggestion,
 } from '@/types/models';
 
 export const conversationApi = {
@@ -96,6 +97,15 @@ export const contactApi = {
       body: JSON.stringify({ is_blocked: isBlocked }),
     }),
   search: (query: string) => apiRequest<User[]>(`/users/search?q=${encodeURIComponent(query)}`),
+};
+
+export const userApi = {
+  suggestions: (limit = 8) => apiRequest<UserSuggestion[]>(`/users/suggestions?limit=${limit}`),
+  setDiscoverability: (is_discoverable: boolean) =>
+    apiRequest<User>('/users/me/discoverability', {
+      method: 'PATCH',
+      body: JSON.stringify({ is_discoverable }),
+    }),
 };
 
 export const uploadApi = {

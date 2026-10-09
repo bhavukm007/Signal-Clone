@@ -275,3 +275,112 @@
     opacity: 0.35;
   }
 }
+.suggestion-empty-state {
+  padding: 20px 14px;
+}
+.suggestion-empty-state h2 {
+  margin: 4px 0 18px;
+  font-size: 17px;
+}
+.suggestion-empty-state > p {
+  color: var(--signal-muted);
+  font-size: 13px;
+}
+.suggestion-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--signal-divider);
+}
+.suggestion-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+.suggestion-copy span,
+.suggestion-copy small {
+  overflow: hidden;
+  color: var(--signal-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggestion-card > button,
+.picker-suggestion-row {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--signal-selected);
+  color: var(--signal-blue);
+  font-weight: 600;
+}
+.picker-suggestions {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0 12px;
+}
+.picker-suggestions h3 {
+  margin: 8px 4px;
+  font-size: 13px;
+}
+.picker-suggestion-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  background: transparent;
+  color: var(--signal-text);
+  text-align: left;
+}
+.picker-suggestion-row span {
+  display: grid;
+  gap: 2px;
+}
+.picker-suggestion-row small {
+  overflow: hidden;
+  max-width: 250px;
+  color: var(--signal-muted);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-menu-wrap {
+  position: relative;
+  margin-left: auto;
+}
+.member-menu-trigger {
+  width: 40px;
+  height: 40px;
+}
+.member-menu {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 170px;
+  padding: 5px;
+  border: 1px solid var(--signal-divider);
+  border-radius: 12px;
+  background: var(--signal-app);
+  box-shadow: 0 8px 24px #0003;
+}
+.member-menu button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--signal-text);
+  text-align: left;
+}
+.member-menu button:hover,
+.member-menu button:focus-visible {
+  background: var(--signal-selected);
+}

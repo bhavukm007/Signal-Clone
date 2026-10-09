@@ -121,7 +121,10 @@ async def send_message(
             })
         if previous is None:
             await publish_message(db, message, sender.id)
-        return message
+    if previous is None:
+        from app.services.welcome_bot_service import reply_after_typing
+        await reply_after_typing(db, message, sender)
+    return message
 
 
 async def publish_receipt(db: Session, receipt: Receipt) -> None:

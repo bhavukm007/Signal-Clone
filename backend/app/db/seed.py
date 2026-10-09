@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -149,6 +150,9 @@ def _seed_groups(db: Session, users: list[User], now) -> None:
             conversation_id=group.id,
             sender_id=admin.id,
             body=f'{admin.display_name} created {name}',
+            system_data=json.dumps({
+                'event': 'group_created', 'actor_id': admin.id, 'group_name': name,
+            }),
             type='system',
             client_message_id=f'demo-group-system-{group.id}',
             created_at=now - timedelta(days=5),
@@ -203,6 +207,8 @@ def seed(db: Session) -> None:
     _seed_contacts(db, users)
     _seed_direct_conversations(db, users, now)
     _seed_groups(db, users, now)
+    from app.services.welcome_bot_service import ensure_bot
+    ensure_bot(db)
     db.commit()
 
 

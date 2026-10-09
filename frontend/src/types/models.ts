@@ -8,6 +8,16 @@ export interface User {
   avatar_color: string;
   is_online: boolean;
   last_seen_at: string;
+  is_discoverable?: boolean;
+}
+
+export interface UserSuggestion {
+  id: string;
+  display_name: string;
+  about: string;
+  avatar_url: string | null;
+  avatar_color: string;
+  masked_phone_number: string | null;
 }
 
 export interface Attachment {
@@ -24,12 +34,21 @@ export interface ConversationAttachment extends Attachment {
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type MessageType = 'text' | 'image' | 'file' | 'system';
+export interface SystemMessageData {
+  event?: string;
+  actor_id?: string;
+  target_id?: string;
+  target_name?: string;
+  group_name?: string;
+  role?: string;
+}
 
 export interface MessagePreview {
   id: string;
   sender_id: string;
   sender: User;
   body: string;
+  system_data?: SystemMessageData | null;
   preview_text?: string;
   type: MessageType;
   created_at: string;
@@ -41,6 +60,7 @@ export interface Message {
   sender_id: string;
   sender: User;
   body: string;
+  system_data?: SystemMessageData | null;
   type: MessageType;
   client_message_id: string;
   created_at: string;

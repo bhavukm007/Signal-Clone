@@ -12,7 +12,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { contactApi, conversationApi } from '@/lib/chatApi';
+import { contactApi, conversationApi, userApi } from '@/lib/chatApi';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -26,6 +26,11 @@ export function Sidebar() {
   const query = useUiStore((s) => s.searchQuery);
   const term = useDebounce(query, 250);
   const { data: conversations = [], isLoading, error, refetch } = useConversations();
+  const suggestions = useQuery({
+    queryKey: ['user-suggestions'],
+    queryFn: () => userApi.suggestions(8),
+    enabled: !isLoading && !error && conversations.length === 0,
+  });
   const {
     data: people = [],
     error: peopleError,
@@ -52,6 +57,24 @@ export function Sidebar() {
       router.push(`/chat/${conversation.id}`);
     } catch {
       useUiStore.getState().notify('Could not start this conversation.');
+    }
+  }
+  async function messageSuggestion(userId: string) {
+    try {
+      await contactApi.addById(userId);
+      await startChat(userId);
+    } catch {
+      useUiStore.getState().notify('Could not add this person.');
+    }
+  }
+  async function addSuggestion(userId: string) {
+    try {
+      await contactApi.addById(userId);
+      await queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      await suggestions.refetch();
+      useUiStore.getState().notify('Contact added.');
+    } catch {
+      useUiStore.getState().notify('Could not add this person.');
     }
   }
   return (
@@ -98,7 +121,41 @@ export function Sidebar() {
             </div>
           )}
           {!isLoading && !error && conversations.length === 0 && (
-            <p className="inline-loading">No conversations yet. Start a new chat.</p>
+            <section className="suggestion-empty-state" aria-label="People you may know">
+              <h2>Start your first conversation</h2>
+              <p>People you may know</p>
+              {suggestions.isLoading && <p role="status">Finding people…</p>}
+              {suggestions.error && (
+                <div role="alert">
+                  Suggestions could not be loaded.{' '}
+                  <button onClick={() => void suggestions.refetch()}>Retry</button>
+                </div>
+              )}
+              {!suggestions.isLoading && !suggestions.error && !suggestions.data?.length && (
+                <p>No suggestions yet.</p>
+              )}
+              {suggestions.data?.map((person) => (
+                <article className="suggestion-card" key={person.id}>
+                  <Avatar
+                    name={person.display_name}
+                    color={person.avatar_color}
+                    imageUrl={person.avatar_url}
+                  />
+                  <div className="suggestion-copy">
+                    <b>{person.display_name}</b>
+                    <span>{person.about}</span>
+                    {person.masked_phone_number && <small>{person.masked_phone_number}</small>}
+                  </div>
+                  <button onClick={() => void messageSuggestion(person.id)}>Message</button>
+                  <button
+                    aria-label={`Add ${person.display_name}`}
+                    onClick={() => void addSuggestion(person.id)}
+                  >
+                    Add
+                  </button>
+                </article>
+              ))}
+            </section>
           )}
           {conversations.map((item) => (
             <ConversationItem

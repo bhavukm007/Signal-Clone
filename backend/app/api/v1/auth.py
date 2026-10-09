@@ -45,7 +45,12 @@ def update_profile(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return auth_service.update_profile(db, user, body.display_name, body.about)
+    is_first_profile = not user.display_name.strip()
+    updated = auth_service.update_profile(db, user, body.display_name, body.about)
+    if is_first_profile and body.display_name.strip():
+        from app.services.welcome_bot_service import create_onboarding_conversation
+        create_onboarding_conversation(db, updated)
+    return updated
 
 
 @router.post('/logout')

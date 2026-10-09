@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserRoundPlus, UserRoundSearch, UsersRound, X } from 'lucide-react';
-import { contactApi, conversationApi } from '@/lib/chatApi';
+import { contactApi, conversationApi, userApi } from '@/lib/chatApi';
 import { useUiStore } from '@/store/uiStore';
 import { useOverlayStore } from '@/store/overlayStore';
 import { useAuthStore } from '@/store/authStore';
@@ -33,10 +33,26 @@ export function NewChatModal() {
   const term = useDebounce(query.trim(), 250);
   const pickerRef = useRef<HTMLDivElement>(null);
   const active = modal?.kind === 'new-message' || modal?.kind === 'new-group';
+  useEffect(() => {
+    if (modal?.kind !== 'new-message') return;
+    const firstFrame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLInputElement>(`[data-overlay-id="${modal.id}"] [data-autofocus]`)
+          ?.focus({ preventScroll: true });
+      });
+    });
+    return () => cancelAnimationFrame(firstFrame);
+  }, [modal?.id, modal?.kind]);
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts'],
     queryFn: contactApi.list,
     enabled: active,
+  });
+  const suggestions = useQuery({
+    queryKey: ['user-suggestions'],
+    queryFn: () => userApi.suggestions(8),
+    enabled: modal?.kind === 'new-message' && contacts.length < 4 && !query.trim(),
   });
   const { data: users = [], isFetching: searchingUsers } = useQuery({
     queryKey: ['user-search', term],
@@ -242,6 +258,39 @@ export function NewChatModal() {
             <span>Add contact</span>
           </button>
         </div>
+        {!query.trim() && contacts.length < 4 && (
+          <section className="picker-suggestions" aria-label="Suggested people">
+            <h3>Suggested</h3>
+            {suggestions.isLoading && <p role="status">Loading suggestions…</p>}
+            {suggestions.error && (
+              <div role="alert">
+                Suggestions could not be loaded.{' '}
+                <button onClick={() => void suggestions.refetch()}>Retry</button>
+              </div>
+            )}
+            {!suggestions.isLoading && !suggestions.error && !suggestions.data?.length && (
+              <p>No suggestions available.</p>
+            )}
+            {suggestions.data?.map((person) => (
+              <button
+                className="picker-suggestion-row"
+                key={person.id}
+                onClick={() => void start(person.id, false)}
+              >
+                <Avatar
+                  name={person.display_name}
+                  color={person.avatar_color}
+                  imageUrl={person.avatar_url}
+                  size="small"
+                />
+                <span>
+                  <b>{person.display_name}</b>
+                  <small>{person.about}</small>
+                </span>
+              </button>
+            ))}
+          </section>
+        )}
         <h3 className="contact-list-heading">Contacts</h3>
         {people.length === 0 && !searchingUsers && looksLikeIdentifier(query) && (
           <button

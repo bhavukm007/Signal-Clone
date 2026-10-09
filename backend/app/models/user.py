@@ -20,5 +20,6 @@ class User(Base):
     avatar_storage_path: Mapped[Optional[str]] = mapped_column(String(255))
     avatar_color: Mapped[str] = mapped_column(String(7), default='#8298c9')
     is_online: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_discoverable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
