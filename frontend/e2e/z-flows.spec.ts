@@ -40,7 +40,7 @@ async function signedInPage(
   browser: Browser,
   viewport: { width: number; height: number },
   theme: string,
-  identifier = '+91 90000 00001',
+  identifier = '+919000000001',
 ) {
   const session = await createSession(identifier);
   const context = await browser.newContext({ viewport });
@@ -62,8 +62,8 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   browser,
 }) => {
   test.setTimeout(90000);
-  const first = await createSession('+91 90000 00001');
-  const second = await createSession('+91 90000 00002');
+  const first = await createSession('+919000000001');
+  const second = await createSession('+919000000002');
   const headers = { Authorization: `Bearer ${first.token}`, 'content-type': 'application/json' };
   const groupResponse = await fetch(`${api}/groups`, {
     method: 'POST',
@@ -84,7 +84,7 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
     browser,
     viewports[2],
     'light',
-    '+91 90000 00002',
+    '+919000000002',
   );
   const firstRealtime = firstPage.waitForEvent('websocket');
   const secondRealtime = secondPage.waitForEvent('websocket');
@@ -95,13 +95,13 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   await expect(secondPage.locator('.message-list')).toBeVisible();
   const body = `Group receipt ${randomUUID()}`;
   await firstPage.getByPlaceholder('Write a message…').fill(body);
-  await firstPage.getByRole('button', { name: 'Send' }).click();
+  await firstPage.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(secondPage.locator('.message-list').getByText(body)).toBeVisible();
   await secondPage.locator('.message-list').evaluate((element) => {
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(firstPage.getByLabel('Message read')).toBeVisible({ timeout: 10000 });
+  await expect(firstPage.getByLabel('Read')).toBeVisible({ timeout: 10000 });
 
   const firstMessage = firstPage.locator('.message-row').filter({ hasText: body });
   await firstMessage.getByRole('button', { name: 'React with heart' }).click();
@@ -110,7 +110,7 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   await expect(firstPage.locator('.reply-preview')).toContainText(body);
   const quote = `Quoted ${randomUUID()}`;
   await firstPage.getByPlaceholder('Write a message…').fill(quote);
-  await firstPage.getByRole('button', { name: 'Send' }).click();
+  await firstPage.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(
     firstPage.locator('.message-row').filter({ hasText: quote }).locator('.quoted-reply'),
   ).toContainText(body);
@@ -122,7 +122,7 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
     buffer: Buffer.from('playwright attachment'),
   });
   await expect(firstPage.locator('.attachment-staging')).toContainText(uploadName);
-  await firstPage.getByRole('button', { name: 'Send' }).click();
+  await firstPage.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(firstPage.locator('.message-list').getByText(uploadName)).toBeVisible();
 
   await firstPage.getByRole('button', { name: 'Search messages' }).click();
@@ -141,7 +141,7 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   await firstPage.keyboard.press('Escape');
   const expiring = `Disappears ${randomUUID()}`;
   await firstPage.getByPlaceholder('Write a message…').fill(expiring);
-  await firstPage.getByRole('button', { name: 'Send' }).click();
+  await firstPage.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(firstPage.locator('.message-list').getByText(expiring)).toBeVisible();
   await expect(firstPage.locator('.message-list').getByText(expiring)).toHaveCount(0, {
     timeout: 40000,

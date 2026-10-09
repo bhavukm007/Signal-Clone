@@ -79,8 +79,8 @@ export function AvatarCropDialog({
       <div className="avatar-cropper">
         <canvas
           ref={canvas}
-          width={384}
-          height={384}
+          width={512}
+          height={512}
           aria-label="Profile photo crop preview"
           onPointerDown={(event) => {
             drag.current = { x: event.clientX, y: event.clientY };

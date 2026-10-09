@@ -81,7 +81,7 @@ def test_seeded_conversation_timestamps_are_utc_iso_strings(
     client: TestClient, db_session: Session,
 ) -> None:
     seed_if_empty(db_session)
-    alice = login(client, '+91 90000 00001')
+    alice = login(client, '+919000000001')
     headers = {'Authorization': f"Bearer {alice['token']}"}
     conversations = client.get('/api/v1/conversations', headers=headers).json()
     for conversation in conversations:
