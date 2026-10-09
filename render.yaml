@@ -1,19 +1,33 @@
 services:
   - type: web
     name: signal-clone-api
-    runtime: docker
+    runtime: python
+    plan: free
     rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      - key: ENVIRONMENT
+        value: production
       - key: DATABASE_URL
-        value: sqlite:////data/signal.db
+        value: sqlite:///./signal.db
       - key: CORS_ORIGINS
-        value: https://your-app.vercel.app
-      - key: UPLOAD_DIR
-        value: /data/uploads
+        sync: false
+      - key: JWT_SECRET
+        sync: false
       - key: OTP_CODE
-        value: '123456'
-    disk:
-      name: signal-data
-      mountPath: /data
-      sizeGB: 1
+        sync: false
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_UPLOAD_BYTES
+        value: '10485760'
+
+# Optional persistent storage for a paid Render plan. The free plan uses an
+# ephemeral filesystem and the startup seed recreates demo accounts after reset.
+# To opt in, uncomment this disk and change DATABASE_URL and UPLOAD_DIR above to
+# sqlite:////data/signal.db and /data/uploads respectively.
+#    disk:
+#      name: signal-data
+#      mountPath: /data
+#      sizeGB: 1
