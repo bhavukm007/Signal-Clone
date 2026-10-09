@@ -1,14 +1,14 @@
 :root {
   color-scheme: light;
   --signal-blue: #3a76f0;
-  --signal-outgoing: #2c6bed;
-  --signal-incoming: #e9e9e9;
+  --signal-outgoing: #3a76f0;
+  --signal-incoming: #f0f0f0;
   --signal-app: #ffffff;
   --signal-sidebar: #ffffff;
   --signal-chat: #ffffff;
   --signal-text: #1b1b1b;
   --signal-muted: #777777;
-  --signal-divider: #e9e9e9;
+  --signal-divider: #e5e5e5;
   --signal-selected: #e8e8e8;
   --signal-search: #f1f1f1;
   --signal-incoming-text: #1b1b1b;
@@ -16,15 +16,15 @@
 }
 [data-theme='dark'] {
   color-scheme: dark;
-  --signal-app: #1b1b1b;
-  --signal-sidebar: #1b1b1b;
-  --signal-chat: #1b1b1b;
+  --signal-app: #202020;
+  --signal-sidebar: #202020;
+  --signal-chat: #202020;
   --signal-text: #ffffff;
   --signal-muted: #aaaaaa;
-  --signal-divider: #2e2e2e;
-  --signal-selected: #2e2e2e;
+  --signal-divider: #303030;
+  --signal-selected: #303030;
   --signal-search: #303030;
-  --signal-incoming: #3b3b3b;
+  --signal-incoming: #303030;
   --signal-incoming-text: #ffffff;
   --signal-bubble-meta: #bbbbbb;
 }

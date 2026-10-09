@@ -12,6 +12,9 @@ import {
   Paperclip,
   ShieldCheck,
   X,
+  Check,
+  CheckCheck,
+  Clock3,
 } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -288,14 +291,17 @@ export function ChatView() {
                         {fullTime(message.created_at)}
                       </time>
                       {!incoming && (
-                        <span className={`ticks ${message.status === 'read' ? 'read' : ''}`}>
-                          {message.status === 'sending'
-                            ? '◷'
-                            : message.status === 'sent'
-                              ? '✓'
-                              : message.status === 'delivered'
-                                ? '✓✓'
-                                : '✓✓'}
+                        <span
+                          className={`ticks ${message.status === 'read' ? 'read' : ''}`}
+                          aria-label={`Message ${message.status}`}
+                        >
+                          {message.status === 'sending' ? (
+                            <Clock3 size={13} />
+                          ) : message.status === 'sent' ? (
+                            <Check size={14} />
+                          ) : (
+                            <CheckCheck size={15} />
+                          )}
                         </span>
                       )}
                     </footer>

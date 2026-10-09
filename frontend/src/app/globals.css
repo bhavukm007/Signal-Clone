@@ -127,15 +127,15 @@ a {
   flex: 1;
 }
 .conversation-item {
-  min-height: 76px;
-  padding: 12px;
+  min-height: 72px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
   transition: background 0.16s;
 }
 .conversation-item:hover {
-  background: color-mix(in srgb, var(--signal-selected), transparent 38%);
+  background: var(--signal-search);
 }
 .conversation-item.selected {
   background: var(--signal-selected);
@@ -349,9 +349,9 @@ a {
   color: #d7e4ff;
 }
 .ticks {
-  font-size: 14px;
-  letter-spacing: -4px;
-  padding-right: 3px;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 2px;
 }
 .ticks.read {
   color: #80b9ff;
