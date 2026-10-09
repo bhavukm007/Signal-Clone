@@ -157,32 +157,48 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
   }
 });
 
-test('latest messages control stays clear of chat controls at 375px', async ({ browser }) => {
+test('latest messages control stays clear of chat controls at phone, tablet, and desktop widths', async ({
+  browser,
+}) => {
   const session = await createSession();
   const response = await fetch(`${api}/conversations`, {
     headers: { Authorization: `Bearer ${session.token}` },
   });
   const conversations = (await response.json()) as Array<{ id: string }>;
-  const { context, page } = await signedInPage(browser, viewports[0], 'light');
-  await page.goto(`/chat/${conversations[0]?.id}`);
-  const messages = page.locator('.message-list');
-  await messages.evaluate((element) => {
-    element.scrollTop = 0;
-    element.dispatchEvent(new Event('scroll'));
-  });
-  const latest = page.getByRole('button', { name: '↓ Latest messages' });
-  await expect(latest).toBeVisible();
-  const latestBox = await latest.boundingBox();
-  const composerBox = await page.locator('.composer-wrap').boundingBox();
-  const headerBox = await page.locator('.chat-header').boundingBox();
-  const messageListBox = await messages.boundingBox();
-  expect(latestBox).toBeTruthy();
-  expect(composerBox).toBeTruthy();
-  expect(headerBox).toBeTruthy();
-  expect(messageListBox).toBeTruthy();
-  expect(latestBox!.y + latestBox!.height).toBeLessThanOrEqual(composerBox!.y);
-  expect(latestBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
-  expect(messageListBox!.y + messageListBox!.height).toBeLessThanOrEqual(latestBox!.y);
+  for (const viewport of viewports) {
+    const { context, page } = await signedInPage(browser, viewport, 'light');
+    await page.goto(`/chat/${conversations[0]?.id}`);
+    const messages = page.locator('.message-list');
+    await messages.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    const latest = page.getByRole('button', { name: '↓ Latest messages' });
+    await expect(latest).toBeVisible();
+    const latestBox = await latest.boundingBox();
+    const composerBox = await page.locator('.composer-wrap').boundingBox();
+    const headerBox = await page.locator('.chat-header').boundingBox();
+    const messageListBox = await messages.boundingBox();
+    expect(latestBox).toBeTruthy();
+    expect(composerBox).toBeTruthy();
+    expect(headerBox).toBeTruthy();
+    expect(messageListBox).toBeTruthy();
+    expect(latestBox!.y + latestBox!.height).toBeLessThanOrEqual(composerBox!.y);
+    expect(latestBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
+    expect(messageListBox!.y + messageListBox!.height).toBeLessThanOrEqual(latestBox!.y);
+    await context.close();
+  }
+});
+
+test('new message modal starts chats without exposing destructive contact actions', async ({
+  browser,
+}) => {
+  const { context, page } = await signedInPage(browser, viewports[2], 'light');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await expect(page.getByRole('dialog', { name: 'New message' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Block' })).toHaveCount(0);
+  await expect(page.locator('.contact-start').first()).toBeVisible();
   await context.close();
 });
 
@@ -265,8 +281,9 @@ test('blocking confirms the action and shows the blocked conversation state', as
   const conversation = (await direct.json()) as { id: string };
   const { context, page } = await signedInPage(browser, viewports[2], 'light');
   await page.goto('/');
-  await page.getByRole('button', { name: 'New chat' }).click();
-  await page.getByRole('button', { name: 'Block' }).first().click();
+  await page.goto(`/chat/${conversation.id}`);
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('button', { name: 'Block' }).click();
   await expect(page.getByRole('dialog', { name: 'Block contact?' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm block' }).click();
   await expect(page.getByText('Contact blocked.')).toBeVisible();

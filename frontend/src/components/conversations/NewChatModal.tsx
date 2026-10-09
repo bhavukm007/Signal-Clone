@@ -9,7 +9,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { BlockUserControl } from '@/components/contacts/BlockUserControl';
 export function NewChatModal() {
   const modal = useUiStore((s) => s.modal);
   const close = () => useUiStore.getState().openModal(null);
@@ -123,7 +122,6 @@ export function NewChatModal() {
               <Avatar name={c.user.display_name} color={c.user.avatar_color} />
               <span>{c.nickname || c.user.display_name}</span>
             </button>
-            <BlockUserControl userId={c.user.id} />
           </div>
         ))}
         {users
@@ -136,7 +134,6 @@ export function NewChatModal() {
                   {u.display_name} · {u.phone_number || u.username}
                 </span>
               </button>
-              <BlockUserControl userId={u.id} />
             </div>
           ))}
       </div>
