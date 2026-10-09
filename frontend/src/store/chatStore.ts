@@ -12,7 +12,7 @@ interface ChatState {
   setMessages: (id: string, messages: Message[]) => void;
   addMessage: (message: Message) => void;
   updateMessageStatus: (messageId: string, status: Message['status']) => void;
-  acknowledgeMessage: (clientMessageId: string, messageId: string) => void;
+  acknowledgeMessage: (clientMessageId: string, messageId: string, canonical?: Message) => void;
   setTyping: (conversationId: string, userId: string, isTyping: boolean) => void;
   removeMessage: (messageId: string) => void;
 }
@@ -53,14 +53,31 @@ export const useChatStore = create<ChatState>((set) => ({
       }
       return { messagesByConversation: next };
     }),
-  acknowledgeMessage: (clientMessageId, messageId) =>
+  acknowledgeMessage: (clientMessageId, messageId, canonical) =>
     set((state) => {
+      const rank: Record<Message['status'], number> = {
+        sending: 0,
+        sent: 1,
+        delivered: 2,
+        read: 3,
+      };
       const next = Object.fromEntries(
         Object.entries(state.messagesByConversation).map(([id, messages]) => [
           id,
           messages.map((message) =>
             message.client_message_id === clientMessageId
-              ? { ...message, id: messageId, status: 'sent' as const, optimistic: false }
+              ? {
+                  ...message,
+                  ...canonical,
+                  id: messageId,
+                  status:
+                    canonical && rank[canonical.status] > rank[message.status]
+                      ? canonical.status
+                      : rank[message.status] > rank['sent']
+                        ? message.status
+                        : 'sent',
+                  optimistic: false,
+                }
               : message,
           ),
         ]),

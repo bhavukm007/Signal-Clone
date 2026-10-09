@@ -62,7 +62,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
         .then((message) => ({ message, clientMessageId }));
     },
     onSuccess: ({ message, clientMessageId }) => {
-      useChatStore.getState().acknowledgeMessage(clientMessageId, message.id);
+      useChatStore.getState().acknowledgeMessage(clientMessageId, message.id, message);
       void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
