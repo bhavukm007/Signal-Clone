@@ -110,7 +110,7 @@ test('Escape closes a confirmation before its containing info panel', async ({ b
   await context.close();
 });
 
-test('block toasts stay above the composer and blocked banner at every viewport', async ({
+test('block toasts use the top viewport without covering the blocked banner or panel close button', async ({
   browser,
 }) => {
   const auth = await session();
@@ -135,11 +135,28 @@ test('block toasts stay above the composer and blocked banner at every viewport'
       const barBox = await bar.boundingBox();
       expect(toastBox).toBeTruthy();
       expect(barBox).toBeTruthy();
-      expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(barBox!.y);
+      expect(toastBox!.y).toBeGreaterThanOrEqual(72);
+      expect(toastBox!.y).toBeLessThanOrEqual(144);
+      expect(
+        toastBox!.y + toastBox!.height <= barBox!.y || barBox!.y + barBox!.height <= toastBox!.y,
+      ).toBeTruthy();
       if (keepPanelOpen && width === 1280) {
         const panelBox = await info.boundingBox();
         expect(panelBox).toBeTruthy();
-        expect(toastBox!.x + toastBox!.width).toBeLessThanOrEqual(panelBox!.x);
+        const closeBox = await info.getByRole('button', { name: 'Close panel' }).boundingBox();
+        expect(closeBox).toBeTruthy();
+        expect(
+          toastBox!.y + toastBox!.height <= closeBox!.y ||
+            closeBox!.y + closeBox!.height <= toastBox!.y,
+        ).toBeTruthy();
+      }
+      if (keepPanelOpen && width < 768) {
+        const closeBox = await info.getByRole('button', { name: 'Back' }).boundingBox();
+        expect(closeBox).toBeTruthy();
+        expect(
+          toastBox!.y + toastBox!.height <= closeBox!.y ||
+            closeBox!.y + closeBox!.height <= toastBox!.y,
+        ).toBeTruthy();
       }
       if (!keepPanelOpen) {
         const unblock = bar.getByRole('button', { name: 'Unblock' });

@@ -16,7 +16,7 @@ export function ToastViewport() {
   }, []);
   return (
     <div className="toast-viewport" aria-live="polite" aria-relevant="additions">
-      {toasts.map((toast) => (
+      {[...toasts].reverse().map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={() => clear(toast.id)} />
       ))}
     </div>
