@@ -12,6 +12,7 @@ export function BlockUserControl({ userId }: { userId: string }) {
   const client = useQueryClient();
   const { data: contacts = [] } = useContacts();
   const blocked = contacts.find((contact) => contact.user.id === userId)?.is_blocked ?? false;
+  if (blocked) return null;
   async function update() {
     try {
       await contactApi.setBlocked(userId, !blocked);
@@ -26,21 +27,14 @@ export function BlockUserControl({ userId }: { userId: string }) {
   }
   return (
     <>
-      <Button variant={blocked ? 'secondary' : 'danger'} onClick={() => setConfirm(true)}>
-        {blocked ? 'Unblock' : 'Block'}
+      <Button variant="danger" onClick={() => setConfirm(true)}>
+        Block
       </Button>
       {confirm && (
-        <Modal
-          title={blocked ? 'Unblock contact?' : 'Block contact?'}
-          onClose={() => setConfirm(false)}
-        >
-          <p>
-            {blocked
-              ? 'This contact will be able to message you again.'
-              : 'This contact cannot message you or see your presence and typing status.'}
-          </p>
-          <Button variant={blocked ? 'primary' : 'danger'} onClick={() => void update()}>
-            Confirm {blocked ? 'unblock' : 'block'}
+        <Modal title="Block contact?" onClose={() => setConfirm(false)}>
+          <p>This contact cannot message you or see your presence and typing status.</p>
+          <Button variant="danger" onClick={() => void update()}>
+            Confirm block
           </Button>
         </Modal>
       )}
