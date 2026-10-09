@@ -82,9 +82,11 @@ Commands below used a temporary clean frontend copy and a temporary backend depe
 | Screenshot count and server cleanup | 30 screenshots generated in OS Temp; localhost ports 8200 and 3200 had no listeners after cleanup. |
 | `git ls-remote origin HEAD` | Could not verify: `getaddrinfo() thread failed to start`. |
 
-Visual sample: the 1280px light screenshot has the expected rail/list/chat structure, blue outgoing and gray incoming bubbles, date separators, reactions, and pill composer. The 375px dark screenshot has a back button and usable composer; the floating “Latest messages” control overlaps part of a long message near the bottom. Screenshots remain in Temp and were not added to the repository.
+Historical visual sample before the final fixes: the 1280px light screenshot had the expected rail/list/chat structure, blue outgoing and gray incoming bubbles, date separators, reactions, and pill composer. The 375px dark screenshot showed the “Latest messages” overlap that was fixed and rechecked in Section G.
 
 ## E. Remaining work (ordered by score impact)
+
+Historical pre-fix list. Section G below records the current status.
 
 | Work | Size | Why it remains |
 |---|---|---|
@@ -99,6 +101,8 @@ Estimated remaining effort: **about 12–18 hours**, including deployment and pu
 
 ## F. Submission blockers
 
+Historical pre-fix summary; consult Section G for current verification and open work.
+
 - **Hosted working demo:** no URL is documented or verified.
 - **Public GitHub publication:** `origin` is configured as `https://github.com/bhavukm007/Signal-Clone.git`, but network/DNS prevented checking whether the current commits are pushed or repository visibility is public.
 - **Deployment readiness:** `render.yaml`, `frontend/vercel.json`, CI, and environment examples are present. The backend health endpoint was live-verified. Actual Render/Vercel deployment, production CORS values, persistent disk behavior, and `wss://` connectivity remain unverified.
@@ -108,3 +112,42 @@ Estimated remaining effort: **about 12–18 hours**, including deployment and pu
 ## Git delta
 
 Since the 2026-10-08 audit commit `76eee87`, `git log` shows the three local commits `ccf0e3c`, `8b590bf`, and `59bc8a1`. The working tree was clean before this report was created. This report is the only intended repository change for this audit.
+
+## G. Final re-score and remaining work (2026-10-09)
+
+This section supersedes the earlier score and open-work estimates above for the requested local fixes.
+
+| Criterion | Final score | Evidence |
+|---|---:|---|
+| Functionality | 27/30 | Backend suite, 14 Playwright tests, two-account messaging smoke, group read aggregation across two contexts, and restart persistence passed. |
+| UI fidelity and responsive layout | 18/20 | Refined message status marks, spacing, hover/selected states, dark colors, and mobile latest control; 30 screenshots cover five views at 375/768/1280 in both themes. Some pixel-level differences from Signal Desktop remain. |
+| Database design | 10/10 | Legacy upgrade code removed; fresh schema test compares model tables, checks, unique constraints, foreign keys, and indexes. |
+| Backend/API design | 9/10 | API and WebSocket checks passed; the socket manager remains single-process. |
+| Code quality | 8/10 | CSS is split into feature files, ChatView is split into timeline/composer components, and the formerly large backend test module is split; behavior checks passed. |
+| Modularity | 8/10 | Chat display, composition, styling, and backend test features are separated; a few broad application files remain. |
+| Deliverables and documentation | 6/10 | README setup, schema, endpoint, and event references were checked against the code. No public demo/deployment was performed. |
+| **Total** | **86/100** | **Local requested work verified.** |
+
+### Final verification
+
+| Check | Result |
+|---|---|
+| `python -m pytest -q` (`backend/`) | **28 passed in 3.69s**. |
+| `npm run format:check` (`frontend/`) | Passed. |
+| `npm run lint` (`frontend/`) | Passed. |
+| `npm run typecheck` (`frontend/`) | Passed. |
+| `npm run build` (`frontend/`) | Passed; production routes include `/icon.svg`. |
+| `npm run test:e2e` with `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3200` and `PLAYWRIGHT_API_URL=http://127.0.0.1:8200` | **14 passed**. Includes 30 light/dark screenshots, 375px control separation, onboarding and chat resource checks, and two-context group messaging, receipts, reactions, reply/quote, attachment, search, disappearing timer, and keyboard shortcuts. |
+| `python scripts/smoke_e2e.py --base-url http://127.0.0.1:8200` | Passed for two accounts: auth, direct chat, group creation, admin denial, typing, both-way messages, delivery and read receipts. |
+| Backend restart then smoke verify with the recorded conversation/message/group IDs | **Persistence passed** against the same SQLite database. |
+
+### Still open
+
+| Item | Status |
+|---|---|
+| Exact pixel parity with Signal Desktop | Open. The inspected screenshots are Signal-like, but settings/group-info/modal details and some spacing/color choices are not pixel-identical. |
+| Public hosted demo and public GitHub visibility | Open / unverified. No GitHub or deployment actions were performed. |
+| Old local database upgrade support | Removed intentionally per request. Existing old `signal.db` files are not upgraded; start with a fresh database using the current models. |
+| Multi-instance realtime delivery | Open. Presence and WebSocket fan-out use a per-process in-memory manager. |
+| Real end-to-end encryption, calls, Stories, and linked devices | Open product gaps; encryption copy and call/story/device affordances remain demo placeholders. |
+| Broader browser matrix and production hosting checks | Open. Browser checks use Chromium locally; production CORS/TLS, cross-device behavior, and a three-or-more-recipient receipt scenario were not exercised. |
