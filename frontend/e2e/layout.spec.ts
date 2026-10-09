@@ -6,6 +6,7 @@ import { resolveWebSocketUrl } from '../src/lib/constants';
 
 const api = `${process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:8000'}/api/v1`;
 const screenshots = process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? '../docs/screenshots';
+const sessionCache = new Map<string, Promise<{ token: string; user: object }>>();
 const viewports = [
   { width: 375, height: 812 },
   { width: 768, height: 1024 },
@@ -46,18 +47,30 @@ test('onboarding retries a transient cold-start response and explains the wait',
 });
 
 async function createSession(identifier = '+91 90000 00001') {
-  await fetch(`${api}/auth/request-otp`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier }),
-  });
-  const response = await fetch(`${api}/auth/verify-otp`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier, code: '123456' }),
-  });
-  if (!response.ok) throw new Error(`Demo login failed with ${response.status}`);
-  return response.json() as Promise<{ token: string; user: object }>;
+  let session = sessionCache.get(identifier);
+  if (!session) {
+    session = (async () => {
+      await fetch(`${api}/auth/request-otp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      const response = await fetch(`${api}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ identifier, code: '123456' }),
+      });
+      if (!response.ok) throw new Error(`Demo login failed with ${response.status}`);
+      return response.json() as Promise<{ token: string; user: object }>;
+    })();
+    sessionCache.set(identifier, session);
+  }
+  try {
+    return await session;
+  } catch (error) {
+    sessionCache.delete(identifier);
+    throw error;
+  }
 }
 
 async function signedInPage(

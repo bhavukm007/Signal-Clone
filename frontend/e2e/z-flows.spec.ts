@@ -7,20 +7,33 @@ const viewports = [
   { width: 768, height: 1024 },
   { width: 1280, height: 800 },
 ];
+const sessionCache = new Map<string, Promise<{ token: string; user: { id: string } }>>();
 
 async function createSession(identifier: string) {
-  await fetch(`${api}/auth/request-otp`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier }),
-  });
-  const response = await fetch(`${api}/auth/verify-otp`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier, code: '123456' }),
-  });
-  if (!response.ok) throw new Error(`Demo login failed with ${response.status}`);
-  return response.json() as Promise<{ token: string; user: { id: string } }>;
+  let session = sessionCache.get(identifier);
+  if (!session) {
+    session = (async () => {
+      await fetch(`${api}/auth/request-otp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      const response = await fetch(`${api}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ identifier, code: '123456' }),
+      });
+      if (!response.ok) throw new Error(`Demo login failed with ${response.status}`);
+      return response.json() as Promise<{ token: string; user: { id: string } }>;
+    })();
+    sessionCache.set(identifier, session);
+  }
+  try {
+    return await session;
+  } catch (error) {
+    sessionCache.delete(identifier);
+    throw error;
+  }
 }
 
 async function signedInPage(

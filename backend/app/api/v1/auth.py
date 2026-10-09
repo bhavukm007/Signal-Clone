@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.rate_limit import auth_rate_limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import OtpAccepted, OtpRequest, OtpVerify
@@ -12,12 +13,20 @@ router = APIRouter(prefix='/auth', tags=['auth'])
 
 
 @router.post('/request-otp', response_model=OtpAccepted)
-def request_otp(body: OtpRequest, db: Session = Depends(get_db)):
+def request_otp(body: OtpRequest, request: Request, db: Session = Depends(get_db)):
+    host = request.client.host if request.client else 'unknown'
+    identifier_key = ''.join(body.identifier.casefold().split())
+    auth_rate_limiter.check(f'otp:{host}:{identifier_key}', 5, 600)
+    auth_rate_limiter.check(f'otp-ip:{host}', 120, 60)
     return auth_service.request_otp(db, body.identifier)
 
 
 @router.post('/verify-otp')
-def verify_otp(body: OtpVerify, db: Session = Depends(get_db)):
+def verify_otp(body: OtpVerify, request: Request, db: Session = Depends(get_db)):
+    host = request.client.host if request.client else 'unknown'
+    identifier_key = ''.join(body.identifier.casefold().split())
+    auth_rate_limiter.check(f'login:{host}:{identifier_key}', 10, 600)
+    auth_rate_limiter.check(f'login-ip:{host}', 120, 60)
     result = auth_service.verify_otp(db, body.identifier, body.code)
     result['user'] = UserOut.model_validate(result['user'])
     return result
