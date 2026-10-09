@@ -8,10 +8,12 @@ export function AvatarCropDialog({
   file,
   onCancel,
   onApply,
+  overlayId,
 }: {
   file: File;
   onCancel: () => void;
   onApply: (file: File, previewUrl: string) => void;
+  overlayId: number;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const image = useRef<HTMLImageElement | null>(null);
@@ -75,7 +77,7 @@ export function AvatarCropDialog({
   }
 
   return (
-    <Modal title="Crop profile photo" onClose={onCancel}>
+    <Modal title="Crop profile photo" onClose={onCancel} overlayId={overlayId}>
       <div className="avatar-cropper">
         <canvas
           ref={canvas}

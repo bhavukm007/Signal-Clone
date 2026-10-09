@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { User } from '@/types/models';
+import { useOverlayStore, type PrimaryOverlayInput } from '@/store/overlayStore';
 
 export interface ToastEntry {
   id: number;
@@ -16,9 +17,6 @@ interface UiState {
   notify: (message: string, action?: ToastEntry['action']) => number;
   clearToast: (id?: number) => void;
   searchQuery: string;
-  modal: string | null;
-  profileUser: User | null;
-  attachmentViewer: { conversationId: string; attachmentId: string } | null;
   setSearchQuery: (query: string) => void;
   openModal: (name: string | null) => void;
   openProfile: (user: User | null) => void;
@@ -40,13 +38,24 @@ export const useUiStore = create<UiState>()(
         set((state) => ({ toasts: id ? state.toasts.filter((toast) => toast.id !== id) : [] }));
       },
       searchQuery: '',
-      modal: null,
-      profileUser: null,
-      attachmentViewer: null,
       setSearchQuery: (searchQuery) => set({ searchQuery }),
-      openModal: (modal) => set({ modal }),
-      openProfile: (profileUser) => set({ profileUser }),
-      openAttachmentViewer: (attachmentViewer) => set({ attachmentViewer }),
+      openModal: (modal) => {
+        const overlays: Record<string, PrimaryOverlayInput> = {
+          'new-chat': { kind: 'new-message' },
+          'add-contact': { kind: 'add-contact' },
+          'create-group': { kind: 'new-group' },
+          'conversation-info': { kind: 'conversation-info' },
+        };
+        useOverlayStore.getState().openPrimary(modal ? (overlays[modal] ?? null) : null);
+      },
+      openProfile: (profileUser) =>
+        useOverlayStore
+          .getState()
+          .openPrimary(profileUser ? { kind: 'contact-profile', user: profileUser } : null),
+      openAttachmentViewer: (attachmentViewer) =>
+        useOverlayStore
+          .getState()
+          .openPrimary(attachmentViewer ? { kind: 'lightbox', ...attachmentViewer } : null),
     }),
     {
       name: 'signal-ui',

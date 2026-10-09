@@ -42,7 +42,7 @@
   background: #0006;
   display: grid;
   place-items: center;
-  z-index: 20;
+  z-index: 40;
 }
 .modal-card {
   position: relative;

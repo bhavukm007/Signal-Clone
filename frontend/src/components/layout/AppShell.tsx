@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Spinner } from '@/components/ui/Spinner';
 import { authApi } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
@@ -12,18 +13,24 @@ import { useChatStore } from '@/store/chatStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { ContactProfilePanel } from '@/components/contacts/ContactProfilePanel';
 import { AttachmentLightbox } from '@/components/chat/AttachmentLightbox';
-import { useUiStore } from '@/store/uiStore';
+import { useOverlayStore } from '@/store/overlayStore';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { token, user, hydrated, setUser } = useAuthStore();
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const connectionStatus = usePresenceStore((state) => state.connectionStatus);
-  const profileUser = useUiStore((state) => state.profileUser);
-  const attachmentViewer = useUiStore((state) => state.attachmentViewer);
+  const overlay = useOverlayStore((state) => state.primary);
+  const previousPath = useRef<string | null>(null);
   const [validatedToken, setValidatedToken] = useState<string | null>(null);
   const [loadError, setLoadError] = useState('');
   const [validationAttempt, setValidationAttempt] = useState(0);
+  useEffect(() => {
+    if (previousPath.current !== null && previousPath.current !== pathname)
+      useOverlayStore.getState().closeAll();
+    previousPath.current = pathname;
+  }, [pathname]);
   useEffect(() => {
     if (!hydrated) return;
     if (!token) {
@@ -77,14 +84,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <NewChatModal />
-      {activeConversationId && <GroupInfoPanel conversationId={activeConversationId} />}
-      {profileUser && (
+      {activeConversationId && overlay?.kind === 'conversation-info' && (
+        <GroupInfoPanel conversationId={activeConversationId} />
+      )}
+      {overlay?.kind === 'contact-profile' && (
         <ContactProfilePanel
-          user={profileUser}
-          onClose={() => useUiStore.getState().openProfile(null)}
+          user={overlay.user}
+          onClose={() => useOverlayStore.getState().closeTop()}
+          overlayId={overlay.id}
         />
       )}
-      {attachmentViewer && <AttachmentLightbox {...attachmentViewer} />}
+      {overlay?.kind === 'lightbox' && <AttachmentLightbox {...overlay} />}
     </WebSocketProvider>
   );
 }

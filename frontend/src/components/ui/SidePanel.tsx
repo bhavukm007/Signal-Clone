@@ -1,64 +1,34 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
+import { useOverlayStore } from '@/store/overlayStore';
 
 export function SidePanel({
   title,
   onClose,
   children,
+  overlayId,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  overlayId?: number;
 }) {
-  const panel = useRef<HTMLElement>(null);
-  const close = useRef(onClose);
-  useEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    const previousFocus =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    panel.current?.querySelector<HTMLElement>('[data-autofocus], button, input, select')?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        close.current();
-        return;
-      }
-      if (event.key !== 'Tab' || !panel.current) return;
-      const controls = Array.from(
-        panel.current.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]',
-        ),
-      );
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.body.style.overflow = oldOverflow;
-      window.removeEventListener('keydown', onKeyDown);
-      previousFocus?.focus();
-    };
-  }, []);
   return (
     <div
       className="side-panel-backdrop"
+      data-overlay-id={overlayId}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (
+          event.target === event.currentTarget &&
+          overlayId !== undefined &&
+          useOverlayStore.getState().isTop(overlayId)
+        )
+          onClose();
       }}
     >
-      <aside className="side-panel" role="dialog" aria-modal="true" aria-label={title} ref={panel}>
+      <aside className="side-panel" role="dialog" aria-modal="true" aria-label={title}>
         <header className="side-panel-header">
           <button className="side-panel-back" aria-label="Back" onClick={onClose}>
             <ArrowLeft size={20} />

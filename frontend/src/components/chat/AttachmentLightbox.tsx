@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { attachmentApi } from '@/lib/chatApi';
 import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
 import { useUiStore } from '@/store/uiStore';
+import { useOverlayStore } from '@/store/overlayStore';
 import { dayLabel, fullTime } from '@/lib/formatters';
 import { downloadMedia } from '@/lib/downloadMedia';
 import type { ConversationAttachment } from '@/types/models';
@@ -14,11 +15,13 @@ import type { ConversationAttachment } from '@/types/models';
 export function AttachmentLightbox({
   conversationId,
   attachmentId,
+  id,
 }: {
   conversationId: string;
   attachmentId: string;
+  id: number;
 }) {
-  const close = () => useUiStore.getState().openAttachmentViewer(null);
+  const close = () => useOverlayStore.getState().closeTop();
   const { data: entries = [] } = useQuery({
     queryKey: ['lightbox-messages', conversationId],
     queryFn: () => attachmentApi.listForConversation(conversationId),
@@ -35,7 +38,6 @@ export function AttachmentLightbox({
   const [zoom, setZoom] = useState(1);
   const zoomed = zoom > 1.05;
   const [downloading, setDownloading] = useState(false);
-  const dialog = useRef<HTMLElement>(null);
   const pointerStart = useRef<number | null>(null);
   const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   const entry: ConversationAttachment | undefined = images[index];
@@ -43,35 +45,14 @@ export function AttachmentLightbox({
   useEffect(() => setIndex(initialIndex), [initialIndex]);
   useEffect(() => setZoom(1), [index]);
   useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const oldOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    dialog.current?.querySelector<HTMLElement>('button')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-      else if (event.key === 'ArrowRight') setIndex((value) => (value + 1) % images.length);
+      if (event.key === 'ArrowRight') setIndex((value) => (value + 1) % images.length);
       else if (event.key === 'ArrowLeft')
         setIndex((value) => (value - 1 + images.length) % images.length);
-      else if (event.key === 'Tab' && dialog.current) {
-        const controls = Array.from(
-          dialog.current.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]'),
-        );
-        const first = controls[0];
-        const last = controls[controls.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
-      document.body.style.overflow = oldOverflow;
       window.removeEventListener('keydown', onKeyDown);
-      previous?.focus();
     };
   }, [images.length]);
 
@@ -89,14 +70,14 @@ export function AttachmentLightbox({
 
   if (!entry) return null;
   return (
-    <div className="lightbox-backdrop">
-      <section
-        className="image-lightbox"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Photo viewer"
-        ref={dialog}
-      >
+    <div
+      className="lightbox-backdrop"
+      data-overlay-id={id}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && useOverlayStore.getState().isTop(id)) close();
+      }}
+    >
+      <section className="image-lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
         <header className="lightbox-toolbar">
           <button aria-label="Close photo viewer" onClick={close}>
             <X />

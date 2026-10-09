@@ -1,14 +1,12 @@
 'use client';
-import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { contactApi } from '@/lib/chatApi';
 import { useContacts } from '@/hooks/useConversations';
 import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+import { useOverlayStore } from '@/store/overlayStore';
 
 export function BlockUserControl({ userId }: { userId: string }) {
-  const [confirm, setConfirm] = useState(false);
   const client = useQueryClient();
   const { data: contacts = [] } = useContacts();
   const blocked = contacts.find((contact) => contact.user.id === userId)?.is_blocked ?? false;
@@ -35,31 +33,29 @@ export function BlockUserControl({ userId }: { userId: string }) {
             );
         },
       });
-      setConfirm(false);
+      useOverlayStore.getState().closeTop();
     } catch {
       useUiStore.getState().notify('Contact privacy setting could not be updated.');
     }
   }
   return (
     <>
-      <Button variant={blocked ? 'secondary' : 'danger'} onClick={() => setConfirm(true)}>
+      <Button
+        variant={blocked ? 'secondary' : 'danger'}
+        onClick={() =>
+          useOverlayStore.getState().push({
+            kind: 'confirmation',
+            title: blocked ? 'Unblock contact?' : 'Block contact?',
+            message: blocked
+              ? 'This contact will be able to message you again.'
+              : 'This contact cannot message you or see your presence and typing status.',
+            confirmLabel: `Confirm ${blocked ? 'unblock' : 'block'}`,
+            onConfirm: update,
+          })
+        }
+      >
         {blocked ? 'Unblock' : 'Block'}
       </Button>
-      {confirm && (
-        <Modal
-          title={blocked ? 'Unblock contact?' : 'Block contact?'}
-          onClose={() => setConfirm(false)}
-        >
-          <p>
-            {blocked
-              ? 'This contact will be able to message you again.'
-              : 'This contact cannot message you or see your presence and typing status.'}
-          </p>
-          <Button variant="danger" onClick={() => void update()}>
-            Confirm {blocked ? 'unblock' : 'block'}
-          </Button>
-        </Modal>
-      )}
     </>
   );
 }

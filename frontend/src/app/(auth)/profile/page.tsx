@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/Input';
 import { authApi } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types/models';
+import { useOverlayStore } from '@/store/overlayStore';
 
 export default function Profile() {
   const [name, setName] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const cropOverlay = useOverlayStore((state) => state.primary);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,7 +110,10 @@ export default function Profile() {
                 aria-label="Choose profile photo"
                 onChange={(event) => {
                   const selected = event.target.files?.[0];
-                  if (selected) setCropFile(selected);
+                  if (selected) {
+                    setCropFile(selected);
+                    useOverlayStore.getState().openPrimary({ kind: 'avatar-crop' });
+                  }
                 }}
               />
             </label>
@@ -134,14 +139,19 @@ export default function Profile() {
           )}
         </form>
       )}
-      {cropFile && (
+      {cropFile && cropOverlay?.kind === 'avatar-crop' && (
         <AvatarCropDialog
           file={cropFile}
-          onCancel={() => setCropFile(null)}
+          overlayId={cropOverlay.id}
+          onCancel={() => {
+            setCropFile(null);
+            useOverlayStore.getState().closeTop();
+          }}
           onApply={(cropped, url) => {
             setFile(cropped);
             setPreview(url);
             setCropFile(null);
+            useOverlayStore.getState().closeTop();
           }}
         />
       )}

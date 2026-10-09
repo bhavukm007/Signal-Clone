@@ -5,9 +5,17 @@ import { UserAvatar } from '@/components/ui/Avatar';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { formatPhoneNumber } from '@/lib/formatters';
 
-export function ContactProfilePanel({ user, onClose }: { user: User; onClose: () => void }) {
+export function ContactProfilePanel({
+  user,
+  onClose,
+  overlayId,
+}: {
+  user: User;
+  onClose: () => void;
+  overlayId: number;
+}) {
   return (
-    <SidePanel title="Profile" onClose={onClose}>
+    <SidePanel title="Profile" onClose={onClose} overlayId={overlayId}>
       <div className="contact-profile-summary">
         <UserAvatar user={user} size="normal" />
         <h3>{user.display_name}</h3>

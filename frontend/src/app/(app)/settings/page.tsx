@@ -13,6 +13,7 @@ import { NotificationsSection } from '../../../components/settings/Notifications
 import { AppearanceSection } from '../../../components/settings/AppearanceSection';
 import { ComingSoon } from '../../../components/settings/ComingSoon';
 import { AvatarCropDialog } from '../../../components/settings/AvatarCropDialog';
+import { useOverlayStore } from '../../../store/overlayStore';
 
 export default function Settings() {
   const user = useAuthStore((state) => state.user);
@@ -26,6 +27,7 @@ export default function Settings() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const cropOverlay = useOverlayStore((state) => state.primary);
   const [photoSaving, setPhotoSaving] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function Settings() {
     if (!file || !user) return;
     try {
       setCropFile(file);
+      useOverlayStore.getState().openPrimary({ kind: 'avatar-crop' });
     } catch {
       notify('Profile photo could not be updated.');
     }
@@ -176,14 +179,19 @@ export default function Settings() {
       <Button variant="danger" onClick={() => void logout()}>
         Log out
       </Button>
-      {cropFile && (
+      {cropFile && cropOverlay?.kind === 'avatar-crop' && (
         <AvatarCropDialog
           file={cropFile}
-          onCancel={() => setCropFile(null)}
+          overlayId={cropOverlay.id}
+          onCancel={() => {
+            setCropFile(null);
+            useOverlayStore.getState().closeTop();
+          }}
           onApply={(file, preview) => {
             setPhotoFile(file);
             setPhotoPreview(preview);
             setCropFile(null);
+            useOverlayStore.getState().closeTop();
           }}
         />
       )}

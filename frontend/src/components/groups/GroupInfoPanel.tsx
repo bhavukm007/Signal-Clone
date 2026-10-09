@@ -11,9 +11,9 @@ import { useUiStore } from '@/store/uiStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
 import { BlockUserControl } from '@/components/contacts/BlockUserControl';
 import { SidePanel } from '@/components/ui/SidePanel';
+import { useOverlayStore } from '@/store/overlayStore';
 import { Switch } from '@/components/ui/Switch';
 import { formatFileSize, formatPhoneNumber } from '@/lib/formatters';
 import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
@@ -45,8 +45,9 @@ function MediaThumb({ attachment, onOpen }: { attachment: Attachment; onOpen: ()
 }
 
 export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
-  const open = useUiStore((state) => state.modal === 'conversation-info');
-  const close = () => useUiStore.getState().openModal(null);
+  const overlay = useOverlayStore((state) => state.primary);
+  const open = overlay?.kind === 'conversation-info';
+  const close = () => useOverlayStore.getState().closeTop();
   const viewer = useAuthStore((state) => state.user);
   const router = useRouter();
   const client = useQueryClient();
@@ -61,7 +62,6 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [mediaTab, setMediaTab] = useState<'media' | 'files'>('media');
-  const [showSafety, setShowSafety] = useState(false);
   const { data: mediaMessages = [] } = useQuery({
     queryKey: ['conversation-media', conversationId],
     queryFn: () => attachmentApi.listForConversation(conversationId),
@@ -159,6 +159,7 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
     <SidePanel
       title={conversation.type === 'group' ? 'Group info' : 'Conversation info'}
       onClose={close}
+      overlayId={overlay?.id}
     >
       {conversation.type === 'direct' && directPeer ? (
         <div className="direct-profile-summary">
@@ -348,17 +349,19 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
       )}
       {conversation.type === 'direct' && (
         <>
-          <Button variant="secondary" onClick={() => setShowSafety(true)}>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              useOverlayStore.getState().push({
+                kind: 'safety-number',
+                title: 'Safety number',
+                message:
+                  'This is a demo safety number and does not represent a real end-to-end encrypted key. 12345 67890 12345 67890',
+              })
+            }
+          >
             <ShieldCheck size={17} /> View safety number
           </Button>
-          {showSafety && (
-            <Modal title="Safety number" onClose={() => setShowSafety(false)}>
-              <p>
-                This is a demo safety number and does not represent a real end-to-end encrypted key.
-              </p>
-              <code>12345 67890 12345 67890</code>
-            </Modal>
-          )}
           {conversation.participants
             .filter(({ user }) => user.id !== viewer?.id)
             .map(({ user }) => (

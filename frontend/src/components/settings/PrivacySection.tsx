@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Switch } from '@/components/ui/Switch';
 import { Button } from '@/components/ui/Button';
@@ -9,12 +8,14 @@ import { useContacts } from '@/hooks/useConversations';
 import { contactApi } from '@/lib/chatApi';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useUiStore } from '@/store/uiStore';
+import { useOverlayStore } from '@/store/overlayStore';
 
 export function PrivacySection() {
   const readReceipts = usePreferencesStore((state) => state.readReceipts);
   const typingIndicators = usePreferencesStore((state) => state.typingIndicators);
   const set = usePreferencesStore((state) => state.setPreference);
-  const [showBlocked, setShowBlocked] = useState(false);
+  const overlay = useOverlayStore((state) => state.primary);
+  const showBlocked = overlay?.kind === 'blocked-users';
   const client = useQueryClient();
   const { data: contacts = [] } = useContacts();
   const blocked = contacts.filter((contact) => contact.is_blocked);
@@ -69,11 +70,18 @@ export function PrivacySection() {
           onChange={(value) => set('typingIndicators', value)}
         />
       </label>
-      <button className="settings-link" onClick={() => setShowBlocked(true)}>
+      <button
+        className="settings-link"
+        onClick={() => useOverlayStore.getState().openPrimary({ kind: 'blocked-users' })}
+      >
         Blocked users <span>Manage</span>
       </button>
-      {showBlocked && (
-        <Modal title="Blocked users" onClose={() => setShowBlocked(false)}>
+      {showBlocked && overlay && (
+        <Modal
+          title="Blocked users"
+          onClose={() => useOverlayStore.getState().closeTop()}
+          overlayId={overlay.id}
+        >
           {blocked.length === 0 ? (
             <p className="blocked-empty">No blocked users</p>
           ) : (

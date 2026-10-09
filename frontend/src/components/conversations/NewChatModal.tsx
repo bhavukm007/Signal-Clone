@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserRoundPlus, UserRoundSearch, UsersRound, X } from 'lucide-react';
 import { contactApi, conversationApi } from '@/lib/chatApi';
 import { useUiStore } from '@/store/uiStore';
+import { useOverlayStore } from '@/store/overlayStore';
 import { useAuthStore } from '@/store/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { matchesContactQuery } from '@/lib/contacts';
@@ -21,7 +22,8 @@ function looksLikeIdentifier(value: string): boolean {
 }
 
 export function NewChatModal() {
-  const modal = useUiStore((state) => state.modal);
+  const overlay = useOverlayStore((state) => state.primary);
+  const modal = overlay;
   const currentUser = useAuthStore((state) => state.user);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -30,7 +32,7 @@ export function NewChatModal() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const term = useDebounce(query.trim(), 250);
   const pickerRef = useRef<HTMLDivElement>(null);
-  const active = modal === 'new-chat' || modal === 'create-group';
+  const active = modal?.kind === 'new-message' || modal?.kind === 'new-group';
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts'],
     queryFn: contactApi.list,
@@ -39,7 +41,7 @@ export function NewChatModal() {
   const { data: users = [], isFetching: searchingUsers } = useQuery({
     queryKey: ['user-search', term],
     queryFn: () => contactApi.search(term),
-    enabled: modal === 'new-chat' && term.length > 1,
+    enabled: modal?.kind === 'new-message' && term.length > 1,
   });
   const contactPeople = useMemo<PickerPerson[]>(
     () =>
@@ -109,10 +111,14 @@ export function NewChatModal() {
     }
   }
 
-  if (!modal) return null;
-  if (modal === 'add-contact')
+  if (
+    !modal ||
+    (modal.kind !== 'new-message' && modal.kind !== 'new-group' && modal.kind !== 'add-contact')
+  )
+    return null;
+  if (modal.kind === 'add-contact')
     return (
-      <Modal title="Add contact" onClose={close}>
+      <Modal title="Add contact" onClose={close} overlayId={overlay.id}>
         <Input
           data-autofocus
           value={query}
@@ -130,10 +136,10 @@ export function NewChatModal() {
       </Modal>
     );
 
-  if (modal === 'create-group') {
+  if (modal.kind === 'new-group') {
     const selected = contactPeople.filter((person) => selectedIds.includes(person.id));
     return (
-      <Modal title="New group" onClose={close}>
+      <Modal title="New group" onClose={close} overlayId={overlay.id}>
         <div className="contact-picker-modal group-picker-modal">
           <Input
             data-autofocus
@@ -176,7 +182,6 @@ export function NewChatModal() {
             selectedIds={selectedIds}
             listRef={pickerRef}
             onProfile={(person) => {
-              useUiStore.getState().openModal(null);
               useUiStore.getState().openProfile(person);
             }}
             onToggle={(person, checked) =>
@@ -200,7 +205,7 @@ export function NewChatModal() {
   }
 
   return (
-    <Modal title="New message" onClose={close}>
+    <Modal title="New message" onClose={close} overlayId={overlay.id}>
       <div className="contact-picker-modal">
         <Input
           data-autofocus
@@ -223,7 +228,7 @@ export function NewChatModal() {
             onClick={() => {
               setQuery('');
               setSelectedIds([]);
-              useUiStore.getState().openModal('create-group');
+              useOverlayStore.getState().openPrimary({ kind: 'new-group' });
             }}
           >
             <UsersRound size={19} />
@@ -231,7 +236,7 @@ export function NewChatModal() {
           </button>
           <button
             className="contact-picker-action"
-            onClick={() => useUiStore.getState().openModal('add-contact')}
+            onClick={() => useOverlayStore.getState().openPrimary({ kind: 'add-contact' })}
           >
             <UserRoundPlus size={19} />
             <span>Add contact</span>
@@ -255,7 +260,6 @@ export function NewChatModal() {
           query={query}
           listRef={pickerRef}
           onProfile={(person) => {
-            useUiStore.getState().openModal(null);
             useUiStore.getState().openProfile(person);
           }}
           onChoose={(person) => void start(person.id, person.is_contact)}

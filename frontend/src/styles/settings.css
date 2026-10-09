@@ -52,7 +52,7 @@
 .toast {
   display: flex;
   width: max-content;
-  max-width: 90vw;
+  max-width: min(90vw, var(--toast-max-width, 90vw));
   align-items: center;
   gap: 12px;
   background: #242424;
@@ -74,8 +74,10 @@
 .toast-viewport {
   position: fixed;
   z-index: 100;
-  left: 50%;
-  bottom: calc(var(--toast-bottom, 0px) + max(16px, env(safe-area-inset-bottom)));
+  left: var(--toast-center-x, 50vw);
+  bottom: calc(
+    var(--composer-height, 24px) + 16px + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px)
+  );
   display: flex;
   width: 100%;
   flex-direction: column;
