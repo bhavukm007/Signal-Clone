@@ -23,7 +23,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     let resizeObserver: ResizeObserver;
+    const viewport = window.visualViewport;
     const updateViewport = () => {
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      root.style.setProperty('--visual-viewport-height', `${viewportHeight}px`);
+      root.style.setProperty(
+        '--keyboard-inset',
+        `${Math.max(0, window.innerHeight - viewportHeight - (viewport?.offsetTop ?? 0))}px`,
+      );
       const panel = document.querySelector<HTMLElement>('.side-panel');
       if (panel && window.innerWidth >= 768) {
         const header = panel.querySelector<HTMLElement>('.side-panel-header');
@@ -35,6 +42,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
     resizeObserver = new ResizeObserver(updateViewport);
     updateViewport();
+    viewport?.addEventListener('resize', updateViewport);
+    viewport?.addEventListener('scroll', updateViewport);
     window.addEventListener('resize', updateViewport);
     resizeObserver.observe(document.body);
     const refreshMeasurements = () => {
@@ -43,6 +52,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const mutationObserver = new MutationObserver(refreshMeasurements);
     mutationObserver.observe(document.body, { childList: true, subtree: true });
     return () => {
+      viewport?.removeEventListener('resize', updateViewport);
+      viewport?.removeEventListener('scroll', updateViewport);
       window.removeEventListener('resize', updateViewport);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
