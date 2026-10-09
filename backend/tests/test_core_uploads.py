@@ -68,7 +68,22 @@ def test_validated_uploads_avatar_and_message_attachment(
     assert sent.status_code == 200
     assert sent.json()['type'] == 'file'
     assert sent.json()['attachments'][0]['id'] == attachment['id']
-    assert client.get(attachment['url'], headers=first_headers).status_code == 200
+    listed = client.get(
+        f"/api/v1/media/conversations/{conversation['id']}/attachments",
+        headers=first_headers,
+    )
+    assert listed.status_code == 200
+    assert listed.json()[0]['file_name'] == 'notes.txt'
+    assert listed.json()[0]['message']['sender']['id'] == first['user']['id']
+    assert client.get(
+        f"/api/v1/media/conversations/{conversation['id']}/attachments",
+        headers={'Authorization': f"Bearer {outsider['token']}"},
+    ).status_code == 403
+    media_response = client.get(attachment['url'], headers=first_headers)
+    assert media_response.status_code == 200
+    assert media_response.content == b'hello attachment'
+    assert media_response.headers['content-type'].startswith('text/plain')
+    assert 'filename="notes.txt"' in media_response.headers['content-disposition']
     assert client.get(attachment['url'], headers=second_headers).status_code == 200
     assert client.get(
         attachment['url'], headers={'Authorization': f"Bearer {outsider['token']}"}
@@ -79,6 +94,26 @@ def test_validated_uploads_avatar_and_message_attachment(
         json={'client_message_id': 'attachment-send-2', 'attachment_ids': [attachment['id']]},
     )
     assert used_again.status_code == 409
+
+    for file_name, content_type, content in [
+        ('photo.png', 'image/png', b'\x89PNG\r\n\x1a\nexample-image'),
+        ('paper.pdf', 'application/pdf', b'%PDF-1.7 example-document'),
+    ]:
+        uploaded = client.post('/api/v1/uploads', headers=first_headers,
+            files={'file': (file_name, content, content_type)})
+        assert uploaded.status_code == 200
+        item = uploaded.json()
+        message = client.post(f"/api/v1/conversations/{conversation['id']}/messages",
+            headers=first_headers,
+            json={'client_message_id': f"attachment-{file_name}", 'attachment_ids': [item['id']]})
+        assert message.status_code == 200
+        downloaded = client.get(item['url'], headers=first_headers)
+        assert downloaded.status_code == 200
+        assert downloaded.content == content
+        assert downloaded.headers['content-type'].startswith(content_type)
+        assert f'filename="{file_name}"' in downloaded.headers['content-disposition']
+        denied = client.get(item['url'], headers={'Authorization': f"Bearer {outsider['token']}"})
+        assert denied.status_code == 403
 
     avatar = client.post(
         '/api/v1/users/me/avatar',
@@ -95,3 +130,5 @@ def test_validated_uploads_avatar_and_message_attachment(
     avatar_file = Path('uploads') / str(avatar_user.avatar_storage_path)
     upload_file.unlink(missing_ok=True)
     avatar_file.unlink(missing_ok=True)
+    for row in db_session.query(Attachment).filter(Attachment.file_name.in_(['photo.png', 'paper.pdf'])):
+        (Path('uploads') / row.storage_path).unlink(missing_ok=True)

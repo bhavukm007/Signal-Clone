@@ -8,6 +8,10 @@ export function useMediaObjectUrl(path: string | null | undefined): string | nul
       setUrl(null);
       return;
     }
+    if (path.startsWith('blob:')) {
+      setUrl(path);
+      return;
+    }
     const controller = new AbortController();
     let objectUrl: string | null = null;
     void fetchMedia(path, controller.signal)

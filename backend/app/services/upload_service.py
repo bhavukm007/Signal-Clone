@@ -97,6 +97,15 @@ async def update_avatar(db: Session, owner: User, upload: UploadFile) -> dict[st
     return {'avatar_url': owner.avatar_url}
 
 
+def remove_avatar(db: Session, owner: User) -> None:
+    stored = owner.avatar_storage_path
+    owner.avatar_storage_path = None
+    owner.avatar_url = None
+    db.commit()
+    if stored and Path(stored).name == stored:
+        (settings.upload_dir / stored).unlink(missing_ok=True)
+
+
 def serialize_attachment(attachment: Attachment) -> dict[str, object]:
     return {
         'id': attachment.id,

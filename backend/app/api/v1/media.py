@@ -16,8 +16,17 @@ def get_attachment(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    path, mime_type = media_service.attachment_path(db, user, attachment_id)
-    return FileResponse(path, media_type=mime_type, filename=path.name)
+    path, mime_type, file_name = media_service.attachment_path(db, user, attachment_id)
+    return FileResponse(path, media_type=mime_type, filename=file_name)
+
+
+@router.get('/conversations/{conversation_id}/attachments')
+def list_conversation_attachments(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return media_service.conversation_attachments(db, user, conversation_id)
 
 
 @router.get('/avatars/{user_id}')

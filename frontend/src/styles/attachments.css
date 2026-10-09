@@ -106,3 +106,177 @@
 button:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* Full-screen image viewer and downloadable message attachments. */
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 94%);
+  color: #fff;
+}
+.image-lightbox {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: 64px minmax(0, 1fr);
+}
+.lightbox-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 8px
+    max(14px, env(safe-area-inset-left));
+}
+.lightbox-toolbar > button,
+.lightbox-arrow {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+}
+.lightbox-toolbar > button:hover,
+.lightbox-arrow:hover {
+  background: rgb(255 255 255 / 15%);
+}
+.lightbox-byline {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.lightbox-byline small {
+  color: #bbb;
+}
+.lightbox-stage {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+}
+.lightbox-photo {
+  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+  transition: transform 160ms ease;
+}
+.lightbox-photo.zoomed {
+  max-width: none;
+  max-height: none;
+  width: min(160vw, 180vh);
+  cursor: zoom-out;
+}
+.lightbox-counter {
+  position: absolute;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  padding: 6px 12px;
+  border-radius: 18px;
+  background: #0009;
+  transform: translateX(-50%);
+}
+.lightbox-arrow {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  background: #0006;
+  transform: translateY(-50%);
+}
+.lightbox-arrow.previous {
+  left: max(12px, env(safe-area-inset-left));
+}
+.lightbox-arrow.next {
+  right: max(12px, env(safe-area-inset-right));
+}
+.lightbox-arrow:disabled {
+  opacity: 0.35;
+}
+.image-attachment {
+  position: relative;
+  max-width: min(420px, 100%);
+}
+.image-preview-button {
+  display: block;
+  max-width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.image-preview-button img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(420px, 100%);
+  max-height: 360px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+.attachment-download {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #0008;
+  color: #fff;
+  opacity: 0;
+}
+.image-attachment:hover .attachment-download,
+.attachment-download:focus-visible {
+  opacity: 1;
+}
+.file-attachment {
+  display: flex;
+  max-width: 320px;
+  min-width: 210px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--signal-selected);
+}
+.file-attachment-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.file-attachment-copy b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-attachment-copy small {
+  color: var(--signal-muted);
+}
+.file-attachment > button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--signal-blue);
+}
+@media (max-width: 767px) {
+  .attachment-download {
+    opacity: 1;
+  }
+  .lightbox-arrow {
+    width: 44px;
+    height: 44px;
+  }
+}
