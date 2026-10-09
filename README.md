@@ -2,7 +2,7 @@
 
 A full-stack desktop-style messaging demo built with Next.js, FastAPI, SQLAlchemy, and SQLite. It includes onboarding, contacts, direct and group conversations, persisted messages, realtime delivery/read status, typing and presence events, uploads, reactions, replies, disappearing timers, and light/dark themes.
 
-**Screenshots:** [responsive UI captures](docs/screenshots/README.md) show phone, tablet, and desktop layouts in light and dark themes.
+**Screenshots:** [curated responsive UI captures](docs/screenshots/README.md) show representative phone and desktop layouts in light and dark themes. Full Playwright captures go to the ignored `frontend/test-results/screenshots/`; `npm run screenshots` intentionally refreshes the curated set.
 
 ## Demo accounts
 
@@ -315,6 +315,12 @@ npm run build
 ```
 
 The live local smoke script exercises both demo accounts over HTTP and WebSockets. Start the backend first, then run `python scripts/smoke_e2e.py`. For post-restart checks, use `--verify-conversation`, `--verify-message`, and `--verify-group` with the IDs printed by the first run. GitHub Actions runs backend pytest and frontend install, formatting, lint, typecheck, and build on pushes and pull requests.
+
+## Mobile and installable web app
+
+The web app uses a single-pane chat layout below 768px, full-screen chat/profile/settings pages, safe-area spacing, and a standalone PWA manifest with original Signal-blue chat-bubble icons. On supported browsers use **Add to Home Screen** or **Install app**. Playwright mobile captures go to the ignored `frontend/test-results/screenshots/mobile/` directory.
+
+Keyboard shortcuts: `Ctrl/Cmd+F` focuses chat search, `Ctrl/Cmd+N` opens New message, `Esc` closes the active dialog or panel, and `Alt+Arrow Up/Down` moves between chats.
 
 ## Known limitations
 

@@ -9,7 +9,8 @@
     "lint": "eslint src --ext .ts,.tsx",
     "test:unit": "tsc --module commonjs --target es2022 --moduleResolution node --outDir node_modules/.cache/contact-tests src/lib/contacts.ts src/lib/contacts.test.ts && node --test node_modules/.cache/contact-tests/contacts.test.js",
     "test:e2e": "playwright test",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"e2e/**/*.ts\" package.json next.config.js playwright.config.ts tsconfig.json",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\" package.json next.config.js playwright.config.ts tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

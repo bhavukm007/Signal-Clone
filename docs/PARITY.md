@@ -2,9 +2,9 @@
 
 ## Reference and capture method
 
-There is no `docs/reference/` directory in this checkout. This audit uses Signal Desktop's three-pane desktop patterns and Signal Android's single compose affordance and mobile contact picker as the reference. Baseline Playwright captures are the 30 screenshots in `docs/screenshots/`: chat list, chat, group info, settings, and new-message picker at 375, 768, and 1280px in light and dark themes. The images are a local implementation baseline; they are not screenshots of Signal itself.
+There is no `docs/reference/` directory in this checkout. This audit uses Signal Desktop's three-pane desktop patterns and Signal Android's single compose affordance and mobile contact picker as the reference. The curated screenshots linked in `docs/screenshots/README.md` are local implementation captures, not screenshots of Signal itself. Full test captures are generated under ignored `frontend/test-results/screenshots/` and are not committed by routine runs.
 
-The baseline differences below were recorded before the fixes. `docs/screenshots/parity/` contains 54 final captures: chat list, chat, group info, settings, new-message picker, welcome, phone entry, OTP, and profile setup, each at 375, 768, and 1280px in light and dark themes. These are screenshots of this application, not Signal reference screenshots; no `docs/reference/` assets were provided.
+The baseline differences below were recorded before the fixes. Earlier dense capture sets were removed to keep the repository small; `npm run screenshots` is the explicit command for refreshing the curated subset. These are screenshots of this application, not Signal reference screenshots; no `docs/reference/` assets were provided.
 
 ## Baseline differences
 

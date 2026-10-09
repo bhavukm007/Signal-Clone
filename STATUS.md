@@ -178,20 +178,48 @@ This re-score supersedes Section G for the contact picker, responsive compose, b
 | `npm run typecheck` (`frontend/`) | Passed. |
 | `npm run build` (`frontend/`) | Passed; all routes generated. |
 | `npx playwright test` with local production-like backend | **23 passed**. This includes compose bounds/exclusivity, A–Z picker and keyboard flow, group creation validation, block/unblock, concurrent multi-context messaging, previews, timestamps, uploads, receipts, search, timers, and main-flow console/request assertions. |
-| Visual captures | **54 screenshots** in `docs/screenshots/parity/`: nine screens × 375/768/1280px × light/dark. |
+| Visual captures | The historical 54-image set was removed; the current seven curated files and explicit refresh command are documented in `docs/screenshots/README.md`. |
 
-### Still open after this pass
+## I. Profile panels, media viewing, and mobile hardening (2026-10-09)
+
+### Final re-score
+
+| Criterion | Score | Evidence |
+|---|---:|---|
+| Functionality | 28/30 | Backend, attachment authorization, multi-context messaging/unread previews, blocking, timestamps, retry behavior, and broader interaction flows passed. |
+| UI fidelity and responsive layout | 18/20 | Desktop and mobile Chromium suites passed; narrow chat header truncation was corrected. Captures include representative light/dark phone and desktop screens; exact parity is limited by no supplied `docs/reference/` images. |
+| Database design | 10/10 | Fresh database startup, schema tests, and the backend suite passed. |
+| Backend/API design | 9/10 | Backend suite and two-account smoke passed; WebSocket fan-out still uses process-local state. |
+| Code quality | 8/10 | Feature components/styles and regression tests added. Some earlier files remain above the target size. |
+| Modularity | 8/10 | Panels, lightbox, downloads, and scoped styles are separated; additional decomposition remains possible. |
+| Deliverables and documentation | 8/10 | Setup, mobile/PWA and screenshot instructions updated. No GitHub/cloud/deployment actions were taken. |
+| **Total** | **89/100** | Local requested implementation was verified; remaining limits are itemized below. |
+
+### Verification actually run
+
+Environment: Python **3.13.3** in `C:\Users\ASUS\AppData\Local\Temp\signal-clone-stabilize-venv`; Node **v20.15.1** and npm **10.7.0**. Python's installed shim failed to resolve its own installation under the restricted runner; the external venv ran with the full-permission runner, which also permitted local socket and browser access. No repository-local venv was created.
+
+| Check | Result |
+|---|---|
+| `python -m pytest -q --timeout=90` from `backend/` | **39 passed** (one Starlette deprecation warning). |
+| Frontend `npm ci` | Passed after stopping the stale workspace Next.js process that held SWC files open. |
+| `npm run format:check` | Passed. |
+| `npm run lint` | Passed. |
+| `npm run typecheck` | Passed. |
+| `npm run test:unit` | **3 passed** (contact sorting/search helper). |
+| `npm run build` | Passed with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8340/api/v1` and unset `NEXT_PUBLIC_WS_URL`; URL derivation exercised by Playwright. |
+| `npm run test:e2e` against the built frontend and production-like backend | **25 passed**: 24 desktop Chromium tests and one mobile project test covering iPhone 13, Pixel 7, both orientations, 320px, and light/dark. |
+| `npm run screenshots` | **20 passed**; refreshed seven curated screenshots. Routine test screenshots land in ignored `frontend/test-results/screenshots/`. |
+| `backend/scripts/smoke_e2e.py --base-url http://127.0.0.1:8340` | Passed: auth, direct/group chat, uploads, typing, both-way messages, and delivery/read receipts. |
+| Production-like local startup | Passed on a fresh temporary SQLite database with `DEBUG` unset, fake HTTPS-origin CORS configured, random JWT secret, uploads enabled, backend/frontend production servers, and automatic initialization. |
+
+### Still open
 
 | Item | Status |
 |---|---|
-| Pixel-identical Signal UI | Open. There are no local Signal reference screenshots. The parity document records remaining differences in bubble shape/metadata, date/typing treatment, settings/group panel styling, and onboarding content. |
-| Production registration, linked devices, calls, and Stories | Open product gaps; the demo OTP and Coming Soon actions remain. |
-| Multi-instance realtime fan-out and hosted deployment | Open/unverified. No GitHub or cloud/deployment actions were performed. |
-| Unrelated large source/test file refactors | Open; not part of this UI fix. |
-
-### Commits
-
-- `7c23b75` — `feat: sort contacts alphabetically`
-- `b737142` — `feat: build Signal-style new message picker`
-- `a2c6fe8` — `fix: show one responsive compose control`
-- `9ac6b41` — `feat: manage blocked users in privacy settings`
+| Pixel-identical Signal parity | Open; no Signal reference screenshots were supplied, and some onboarding, bubble metadata, group/settings details remain simplified. |
+| Physical-device behavior | Open; Playwright Chromium emulation passed, but real iOS/Android keyboard, safe-area, pinch zoom, browser history/back integration, and install prompts were not exercised on physical devices. |
+| Attachment context-menu download and pinch zoom | Open for dedicated browser assertions; authenticated PNG/PDF downloads, exact bytes/names, viewer download, and non-member 403 were verified. |
+| GitHub and hosted deployment | Not performed or verified, as requested. |
+| Multi-instance WebSocket fan-out, real E2E encryption, calls, linked devices, Stories | Open product/architecture gaps; calls, devices, and Stories remain demo affordances. |
+| Remaining oversized source files | Open; the current pass did not complete the broad unrelated <300-line refactor. |
