@@ -123,6 +123,44 @@
 .danger-button {
   background: #d94444;
 }
+.primary-button:disabled,
+.secondary-button:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transition: none;
+}
+.primary-button:disabled:hover,
+.secondary-button:disabled:hover {
+  background: var(--signal-blue);
+  transform: none;
+}
+.phone-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone-prefix {
+  display: grid;
+  min-width: 58px;
+  min-height: 46px;
+  place-items: center;
+  border: 1px solid var(--signal-divider);
+  border-radius: 8px;
+  background: var(--signal-selected);
+  font-weight: 600;
+}
+.phone-entry .text-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+}
+.character-counter {
+  display: block;
+  color: var(--signal-muted);
+  text-align: right;
+  font-size: 12px;
+}
 .input-field {
   display: flex;
   flex-direction: column;
