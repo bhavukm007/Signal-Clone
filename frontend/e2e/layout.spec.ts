@@ -193,7 +193,11 @@ test('main chat flow has no console errors or failed requests', async ({ browser
     if (message.type() === 'error') errors.push(message.text());
   });
   page.on('requestfailed', (request) => {
-    if (request.resourceType() !== 'websocket')
+    const isCancelledRoutePrefetch =
+      request.failure()?.errorText === 'net::ERR_ABORTED' &&
+      request.url().includes('?_rsc=') &&
+      new URL(request.url()).origin === new URL(page.url()).origin;
+    if (request.resourceType() !== 'websocket' && !isCancelledRoutePrefetch)
       errors.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
   });
   page.on('response', (response) => {
@@ -201,6 +205,7 @@ test('main chat flow has no console errors or failed requests', async ({ browser
   });
   await page.goto('/');
   await expect(page.locator('.conversation-item').first()).toBeVisible();
+  await expect.poll(() => page.locator('.conversation-item').count()).toBeGreaterThan(0);
   const token = await page.evaluate(() => {
     const stored = localStorage.getItem('signal-auth');
     return stored ? (JSON.parse(stored) as { state: { token: string } }).state.token : '';
@@ -211,6 +216,7 @@ test('main chat flow has no console errors or failed requests', async ({ browser
   const conversations = (await response.json()) as Array<{ id: string }>;
   await page.goto(`/chat/${conversations[0]?.id}`);
   await expect(page.locator('.composer')).toBeVisible();
+  await page.waitForTimeout(500);
   await expect.poll(() => errors).toEqual([]);
   await context.close();
 });
