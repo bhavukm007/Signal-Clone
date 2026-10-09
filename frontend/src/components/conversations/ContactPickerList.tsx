@@ -34,6 +34,7 @@ export function ContactPickerList({
   selectedIds = [],
   onChoose,
   onToggle,
+  onProfile,
   listRef,
 }: {
   contacts: PickerPerson[];
@@ -41,6 +42,7 @@ export function ContactPickerList({
   selectedIds?: string[];
   onChoose?: (contact: PickerPerson) => void;
   onToggle?: (contact: PickerPerson, checked: boolean) => void;
+  onProfile?: (contact: PickerPerson) => void;
   listRef?: RefObject<HTMLDivElement>;
 }) {
   const internalRef = useRef<HTMLDivElement>(null);
@@ -84,29 +86,37 @@ export function ContactPickerList({
               const secondary =
                 person.about?.trim() || person.phone_number || person.username || '';
               return onToggle ? (
-                <label
-                  className="contact-picker-row selectable"
-                  key={person.id}
-                  onKeyDown={navigate}
-                >
+                <div className="contact-picker-row selectable" key={person.id} onKeyDown={navigate}>
                   <input
                     type="checkbox"
                     data-picker-item
+                    aria-label={`Select ${person.display_name}`}
                     checked={selectedIds.includes(person.id)}
                     onChange={(event) => onToggle(person, event.target.checked)}
                   />
-                  <Avatar
-                    name={person.display_name}
-                    color={person.avatar_color}
-                    imageUrl={person.avatar_url}
-                  />
+                  <button
+                    className="picker-avatar-button"
+                    type="button"
+                    aria-label={`Open ${person.display_name} profile`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onProfile?.(person);
+                    }}
+                  >
+                    <Avatar
+                      name={person.display_name}
+                      color={person.avatar_color}
+                      imageUrl={person.avatar_url}
+                    />
+                  </button>
                   <span className="contact-picker-copy">
                     <b>
                       <Highlight text={person.display_name} query={query} />
                     </b>
                     <small>{secondary}</small>
                   </span>
-                </label>
+                </div>
               ) : (
                 <button
                   className="contact-picker-row"
@@ -115,11 +125,30 @@ export function ContactPickerList({
                   onClick={() => onChoose?.(person)}
                   onKeyDown={navigate}
                 >
-                  <Avatar
-                    name={person.display_name}
-                    color={person.avatar_color}
-                    imageUrl={person.avatar_url}
-                  />
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="picker-avatar-button"
+                    aria-label={`Open ${person.display_name} profile`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onProfile?.(person);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onProfile?.(person);
+                      }
+                    }}
+                  >
+                    <Avatar
+                      name={person.display_name}
+                      color={person.avatar_color}
+                      imageUrl={person.avatar_url}
+                    />
+                  </span>
                   <span className="contact-picker-copy">
                     <b>
                       <Highlight text={person.display_name} query={query} />

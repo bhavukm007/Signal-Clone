@@ -61,7 +61,7 @@ def update_conversation(
 ):
     conversation = conversation_service.update_conversation(
         db, conversation_id, user, body.is_pinned, body.is_archived,
-        body.muted_until, body.disappearing_timer_seconds,
+        body.muted_until, body.disappearing_timer_seconds, body.mute_notifications,
     )
     return {'id': conversation.id, 'disappearing_timer_seconds': conversation.disappearing_timer_seconds}
 

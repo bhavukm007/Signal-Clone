@@ -37,5 +37,6 @@ export const authApi = {
     form.set('file', file);
     return apiRequest<{ avatar_url: string }>('/users/me/avatar', { method: 'POST', body: form });
   },
+  removeAvatar: () => apiRequest<{ ok: boolean }>('/users/me/avatar', { method: 'DELETE' }),
   logout: () => apiRequest<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 };

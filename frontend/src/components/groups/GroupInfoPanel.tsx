@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
+import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { Timer } from 'lucide-react';
-import { contactApi, conversationApi } from '@/lib/chatApi';
+import { Bell, FileText, ShieldCheck, Timer } from 'lucide-react';
+import { attachmentApi, contactApi, conversationApi } from '@/lib/chatApi';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -12,6 +13,36 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { BlockUserControl } from '@/components/contacts/BlockUserControl';
+import { SidePanel } from '@/components/ui/SidePanel';
+import { Switch } from '@/components/ui/Switch';
+import { formatFileSize, formatPhoneNumber } from '@/lib/formatters';
+import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
+import type { Attachment } from '@/types/models';
+import { downloadMedia } from '@/lib/downloadMedia';
+
+function MediaThumb({ attachment, onOpen }: { attachment: Attachment; onOpen: () => void }) {
+  const url = useMediaObjectUrl(attachment.url);
+  return (
+    <button
+      className="shared-media-thumb"
+      onClick={onOpen}
+      aria-label={`Open ${attachment.file_name}`}
+    >
+      {url ? (
+        <Image
+          src={url}
+          alt={attachment.file_name}
+          fill
+          sizes="(max-width: 420px) 33vw, 120px"
+          unoptimized
+          loading="lazy"
+        />
+      ) : (
+        <span>Loading…</span>
+      )}
+    </button>
+  );
+}
 
 export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
   const open = useUiStore((state) => state.modal === 'conversation-info');
@@ -29,6 +60,13 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
   const [description, setDescription] = useState('');
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [mediaTab, setMediaTab] = useState<'media' | 'files'>('media');
+  const [showSafety, setShowSafety] = useState(false);
+  const { data: mediaMessages = [] } = useQuery({
+    queryKey: ['conversation-media', conversationId],
+    queryFn: () => attachmentApi.listForConversation(conversationId),
+    enabled: open && conversation?.type === 'direct',
+  });
   if (!open || !conversation) return null;
   const activeConversation = conversation;
   const current = activeConversation.participants.find(
@@ -39,6 +77,15 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
     activeConversation.participants.map((participant) => participant.user.id),
   );
   const availableContacts = contacts.filter((contact) => !memberIds.has(contact.user.id));
+  const directPeer = activeConversation.participants.find(
+    ({ user }) => user.id !== viewer?.id,
+  )?.user;
+  const muted = Boolean(
+    activeConversation.muted_until &&
+    new Date(activeConversation.muted_until).getTime() > Date.now(),
+  );
+  const images = mediaMessages.filter((attachment) => attachment.mime_type.startsWith('image/'));
+  const files = mediaMessages.filter((attachment) => !attachment.mime_type.startsWith('image/'));
   const refresh = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: ['conversation', conversationId] }),
@@ -97,16 +144,105 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
       useUiStore.getState().notify('Disappearing timer could not be updated.');
     }
   }
+  async function setMuted(value: boolean) {
+    try {
+      await conversationApi.patch(conversationId, { mute_notifications: value });
+      await refresh();
+    } catch {
+      useUiStore.getState().notify('Mute setting could not be updated.');
+    }
+  }
+  function openImage(attachment: Attachment) {
+    useUiStore.getState().openAttachmentViewer({ conversationId, attachmentId: attachment.id });
+  }
   return (
-    <Modal
+    <SidePanel
       title={conversation.type === 'group' ? 'Group info' : 'Conversation info'}
       onClose={close}
     >
-      <div className="group-summary">
-        <Avatar name={conversation.title || 'Chat'} color="#8298c9" />
-        <h3>{conversation.title || 'Chat'}</h3>
-        <p>{conversation.participants.length} members</p>
-      </div>
+      {conversation.type === 'direct' && directPeer ? (
+        <div className="direct-profile-summary">
+          <Avatar
+            name={directPeer.display_name}
+            color={directPeer.avatar_color}
+            imageUrl={directPeer.avatar_url}
+          />
+          <h3>{directPeer.display_name}</h3>
+          {directPeer.about && <p>{directPeer.about}</p>}
+          {directPeer.phone_number && <p>{formatPhoneNumber(directPeer.phone_number)}</p>}
+        </div>
+      ) : (
+        <div className="group-summary">
+          <Avatar name={conversation.title || 'Chat'} color="#8298c9" />
+          <h3>{conversation.title || 'Chat'}</h3>
+          <p>{conversation.participants.length} members</p>
+        </div>
+      )}
+      {conversation.type === 'direct' && (
+        <>
+          <div className="profile-media-tabs" role="tablist" aria-label="Conversation attachments">
+            <button
+              role="tab"
+              aria-selected={mediaTab === 'media'}
+              onClick={() => setMediaTab('media')}
+            >
+              Shared media
+            </button>
+            <button
+              role="tab"
+              aria-selected={mediaTab === 'files'}
+              onClick={() => setMediaTab('files')}
+            >
+              Files
+            </button>
+          </div>
+          {mediaTab === 'media' ? (
+            <div className="shared-media-grid">
+              {images.map((attachment) => (
+                <MediaThumb
+                  key={attachment.id}
+                  attachment={attachment}
+                  onOpen={() => openImage(attachment)}
+                />
+              ))}
+              {!images.length && <p className="profile-empty">No shared media yet</p>}
+            </div>
+          ) : (
+            <div className="shared-file-list">
+              {files.map((attachment) => (
+                <div className="shared-file-row" key={attachment.id}>
+                  <FileText size={19} />
+                  <span>
+                    <b>{attachment.file_name}</b>
+                    <small>{formatFileSize(attachment.size_bytes)}</small>
+                  </span>
+                  <button
+                    aria-label={`Download ${attachment.file_name}`}
+                    onClick={() =>
+                      void downloadMedia(attachment.url, attachment.file_name).catch(() =>
+                        useUiStore.getState().notify('The attachment could not be downloaded.'),
+                      )
+                    }
+                  >
+                    Download
+                  </button>
+                </div>
+              ))}
+              {!files.length && <p className="profile-empty">No files shared yet</p>}
+            </div>
+          )}
+          <label className="setting-row panel-setting-row">
+            <span>
+              <Bell size={18} /> Mute notifications
+            </span>
+            <Switch
+              label="Mute notifications"
+              checked={muted}
+              onChange={(value) => void setMuted(value)}
+            />
+          </label>
+        </>
+      )}
       <section className="timer-setting">
         <h3>
           <Timer size={16} /> Disappearing messages
@@ -212,9 +348,17 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
       )}
       {conversation.type === 'direct' && (
         <>
-          <p className="safety-note">
-            🔒 Messages are end-to-end encrypted. Safety number verification is a demo placeholder.
-          </p>
+          <Button variant="secondary" onClick={() => setShowSafety(true)}>
+            <ShieldCheck size={17} /> View safety number
+          </Button>
+          {showSafety && (
+            <Modal title="Safety number" onClose={() => setShowSafety(false)}>
+              <p>
+                This is a demo safety number and does not represent a real end-to-end encrypted key.
+              </p>
+              <code>12345 67890 12345 67890</code>
+            </Modal>
+          )}
           {conversation.participants
             .filter(({ user }) => user.id !== viewer?.id)
             .map(({ user }) => (
@@ -225,6 +369,6 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
             ))}
         </>
       )}
-    </Modal>
+    </SidePanel>
   );
 }

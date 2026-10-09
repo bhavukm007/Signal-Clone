@@ -2,6 +2,7 @@ import { apiRequest } from '@/lib/api';
 import type {
   Attachment,
   Contact,
+  ConversationAttachment,
   Conversation,
   ConversationDetail,
   Message,
@@ -103,4 +104,9 @@ export const uploadApi = {
     form.set('file', file);
     return apiRequest<Attachment>('/uploads', { method: 'POST', body: form });
   },
+};
+
+export const attachmentApi = {
+  listForConversation: (conversationId: string) =>
+    apiRequest<ConversationAttachment[]>(`/media/conversations/${conversationId}/attachments`),
 };

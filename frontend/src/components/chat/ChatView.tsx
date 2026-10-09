@@ -1,8 +1,8 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Phone, Video, MoreVertical, Search, ShieldCheck, X } from 'lucide-react';
-import Image from 'next/image';
+import { Search, ShieldCheck, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
@@ -12,13 +12,11 @@ import { EMPTY_TYPING_LIST, useChatStore } from '@/store/chatStore';
 import { useUiStore } from '@/store/uiStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
-import { Avatar } from '@/components/ui/Avatar';
-import { Modal } from '@/components/ui/Modal';
 import type { Attachment } from '@/types/models';
-import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
+import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageTimeline } from '@/components/chat/MessageTimeline';
 import { MessageComposer } from '@/components/chat/MessageComposer';
-import { lastSeenTime } from '@/lib/formatters';
+import { contactApi } from '@/lib/chatApi';
 
 export function ChatView() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -41,7 +39,8 @@ export function ChatView() {
     loadPrevious,
     hasPrevious,
   } = useMessages(conversationId, sendEvent);
-  const { react, removeReaction, upload } = useMessageActions(conversationId);
+  const { react, removeReaction, removeMessage, upload } = useMessageActions(conversationId);
+  const queryClient = useQueryClient();
   const typingIds = useChatStore(
     (s) => s.typingByConversation[conversationId] ?? EMPTY_TYPING_LIST,
   );
@@ -50,8 +49,6 @@ export function ChatView() {
   const [reply, setReply] = useState<string | null>(null);
   const [showLatest, setShowLatest] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const [lightbox, setLightbox] = useState<string | null>(null);
-  const lightboxUrl = useMediaObjectUrl(lightbox);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const bottom = useRef<HTMLDivElement>(null);
@@ -114,61 +111,18 @@ export function ChatView() {
   }
   return (
     <section className="chat-view">
-      <header className="chat-header">
-        <button
-          className="icon-button mobile-back"
-          onClick={() => router.push('/')}
-          aria-label="Back"
-        >
-          <ArrowLeft />
-        </button>
-        <Avatar
-          name={title}
-          color={peer?.avatar_color}
-          imageUrl={peer?.avatar_url}
-          online={peer ? (presence[peer.id] ?? false) : false}
-        />
-        <div className="chat-heading">
-          <b>{title}</b>
-          <small>
-            {conversation.type === 'group'
-              ? `${participants.length} members`
-              : peer && (presence[peer.id] ?? false)
-                ? 'online'
-                : peer?.last_seen_at
-                  ? `last seen ${lastSeenTime(peer.last_seen_at)}`
-                  : 'offline'}
-          </small>
-        </div>
-        <button
-          className="icon-button"
-          aria-label="Voice call"
-          onClick={() => useUiStore.getState().notify('Voice calls are coming soon.')}
-        >
-          <Phone />
-        </button>
-        <button
-          className="icon-button"
-          aria-label="Video call"
-          onClick={() => useUiStore.getState().notify('Video calls are coming soon.')}
-        >
-          <Video />
-        </button>
-        <button
-          className="icon-button"
-          aria-label="Search messages"
-          onClick={() => setSearchOpen((value) => !value)}
-        >
-          <Search />
-        </button>
-        <button
-          className="icon-button"
-          aria-label="More options"
-          onClick={() => useUiStore.getState().openModal('conversation-info')}
-        >
-          <MoreVertical />
-        </button>
-      </header>
+      <ChatHeader
+        title={title}
+        peer={peer}
+        online={peer ? (presence[peer.id] ?? false) : false}
+        conversationType={conversation.type}
+        memberCount={participants.length}
+        onBack={() => {
+          if (Number(window.history.state?.idx ?? 0) > 0) router.back();
+          else router.replace('/');
+        }}
+        onSearch={() => setSearchOpen((value) => !value)}
+      />
       <div className="encryption-banner">
         <ShieldCheck size={14} /> Messages are end-to-end encrypted{' '}
         <button
@@ -181,8 +135,9 @@ export function ChatView() {
       </div>
       {blocked && (
         <div className="blocked-banner" role="status">
-          Blocked{conversation.is_blocked_by_peer ? ' by this contact' : ''}. Messages and presence
-          are paused.
+          {conversation.is_blocked_by_me
+            ? 'You blocked this contact.'
+            : 'This contact blocked you.'}
         </div>
       )}
       {searchOpen && (
@@ -221,7 +176,11 @@ export function ChatView() {
           onReply={setReply}
           onReact={react}
           onRemoveReaction={removeReaction}
-          onPreviewAttachment={setLightbox}
+          onDelete={removeMessage}
+          onPreviewAttachment={(attachmentId) =>
+            useUiStore.getState().openAttachmentViewer({ conversationId, attachmentId })
+          }
+          onOpenProfile={(profileUser) => useUiStore.getState().openProfile(profileUser)}
         />
         {typingIds.length > 0 && (
           <div className="typing-indicator">
@@ -240,36 +199,70 @@ export function ChatView() {
           ↓ Latest messages
         </button>
       )}
-      <MessageComposer
-        draft={draft}
-        onDraftChange={setDraft}
-        onTyping={typing}
-        onSubmit={submit}
-        blocked={blocked}
-        replyText={
-          reply === null ? undefined : messages.find((item) => item.id === reply)?.body || ''
-        }
-        onClearReply={() => setReply(null)}
-        attachments={pendingAttachments}
-        onRemoveAttachment={(id) =>
-          setPendingAttachments((items) => items.filter((item) => item.id !== id))
-        }
-        onUpload={async (file) => {
-          const attachment = await upload(file);
-          if (attachment) setPendingAttachments((items) => [...items, attachment]);
-        }}
-      />
-      {lightbox && lightboxUrl && (
-        <Modal title="Image preview" onClose={() => setLightbox(null)}>
-          <Image
-            src={lightboxUrl}
-            alt="Attachment preview"
-            width={960}
-            height={720}
-            unoptimized
-            className="lightbox-image"
-          />
-        </Modal>
+      {conversation.is_blocked_by_me ? (
+        <div className="blocked-composer" role="status">
+          <span>You blocked this contact.</span>
+          <button
+            onClick={async () => {
+              if (!peer) return;
+              try {
+                await contactApi.setBlocked(peer.id, false);
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] }),
+                  queryClient.invalidateQueries({ queryKey: ['contacts'] }),
+                  queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+                ]);
+                useUiStore.getState().notify('Contact unblocked.', {
+                  label: 'Undo',
+                  run: () => {
+                    void contactApi
+                      .setBlocked(peer.id, true)
+                      .then(() =>
+                        Promise.all([
+                          queryClient.invalidateQueries({
+                            queryKey: ['conversation', conversationId],
+                          }),
+                          queryClient.invalidateQueries({ queryKey: ['contacts'] }),
+                          queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+                        ]),
+                      )
+                      .catch(() =>
+                        useUiStore.getState().notify('Contact could not be blocked again.'),
+                      );
+                  },
+                });
+              } catch {
+                useUiStore.getState().notify('Contact could not be unblocked.');
+              }
+            }}
+          >
+            Unblock
+          </button>
+        </div>
+      ) : blocked ? (
+        <div className="blocked-composer" role="status">
+          This contact blocked you. Messages are paused.
+        </div>
+      ) : (
+        <MessageComposer
+          draft={draft}
+          onDraftChange={setDraft}
+          onTyping={typing}
+          onSubmit={submit}
+          blocked={blocked}
+          replyText={
+            reply === null ? undefined : messages.find((item) => item.id === reply)?.body || ''
+          }
+          onClearReply={() => setReply(null)}
+          attachments={pendingAttachments}
+          onRemoveAttachment={(id) =>
+            setPendingAttachments((items) => items.filter((item) => item.id !== id))
+          }
+          onUpload={async (file) => {
+            const attachment = await upload(file);
+            if (attachment) setPendingAttachments((items) => [...items, attachment]);
+          }}
+        />
       )}
     </section>
   );

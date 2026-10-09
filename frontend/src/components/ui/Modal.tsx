@@ -17,6 +17,8 @@ export function Modal({ title, onClose, children }: ModalProps) {
   useEffect(() => {
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const autofocus = card.current?.querySelector<HTMLElement>('[data-autofocus]');
     (
       autofocus ??
@@ -46,6 +48,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
   }, []);

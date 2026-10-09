@@ -10,12 +10,17 @@ import { NewChatModal } from '@/components/conversations/NewChatModal';
 import { GroupInfoPanel } from '@/components/groups/GroupInfoPanel';
 import { useChatStore } from '@/store/chatStore';
 import { usePresenceStore } from '@/store/presenceStore';
+import { ContactProfilePanel } from '@/components/contacts/ContactProfilePanel';
+import { AttachmentLightbox } from '@/components/chat/AttachmentLightbox';
+import { useUiStore } from '@/store/uiStore';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { token, user, hydrated, setUser } = useAuthStore();
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const connectionStatus = usePresenceStore((state) => state.connectionStatus);
+  const profileUser = useUiStore((state) => state.profileUser);
+  const attachmentViewer = useUiStore((state) => state.attachmentViewer);
   const [validatedToken, setValidatedToken] = useState<string | null>(null);
   useEffect(() => {
     if (!hydrated) return;
@@ -57,6 +62,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <NewChatModal />
       {activeConversationId && <GroupInfoPanel conversationId={activeConversationId} />}
+      {profileUser && (
+        <ContactProfilePanel
+          user={profileUser}
+          onClose={() => useUiStore.getState().openProfile(null)}
+        />
+      )}
+      {attachmentViewer && <AttachmentLightbox {...attachmentViewer} />}
     </WebSocketProvider>
   );
 }

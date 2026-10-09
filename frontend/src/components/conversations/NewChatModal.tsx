@@ -175,6 +175,10 @@ export function NewChatModal() {
             query={query}
             selectedIds={selectedIds}
             listRef={pickerRef}
+            onProfile={(person) => {
+              useUiStore.getState().openModal(null);
+              useUiStore.getState().openProfile(person);
+            }}
             onToggle={(person, checked) =>
               setSelectedIds((ids) =>
                 checked ? [...ids, person.id] : ids.filter((id) => id !== person.id),
@@ -250,6 +254,10 @@ export function NewChatModal() {
           contacts={people}
           query={query}
           listRef={pickerRef}
+          onProfile={(person) => {
+            useUiStore.getState().openModal(null);
+            useUiStore.getState().openProfile(person);
+          }}
           onChoose={(person) => void start(person.id, person.is_contact)}
         />
         {searchingUsers && term && <p className="contact-search-loading">Searching…</p>}

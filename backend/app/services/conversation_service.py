@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from app.models.conversation import Conversation, Participant
+from app.db.base import utc_now
 from app.models.message import Attachment, Message
 from app.core.datetime import utc_iso
 from app.models.contact import Contact
@@ -162,6 +165,7 @@ def update_conversation(
     is_archived: bool | None,
     muted_until,
     disappearing_timer_seconds: int | None,
+    mute_notifications: bool | None = None,
 ) -> Conversation:
     participant = require_member(db, conversation_id, user.id)
     conversation = conversation_repository.by_id(db, conversation_id)
@@ -171,13 +175,15 @@ def update_conversation(
             setattr(participant, field, value)
     if disappearing_timer_seconds is not None:
         conversation.disappearing_timer_seconds = disappearing_timer_seconds or None
+    if mute_notifications is not None:
+        participant.muted_until = utc_now() + timedelta(days=3650) if mute_notifications else None
     db.commit()
     db.refresh(conversation)
     return conversation
 
 
 def detail(db: Session, user: User, conversation_id: str) -> dict[str, object]:
-    require_member(db, conversation_id, user.id)
+    membership = require_member(db, conversation_id, user.id)
     conversation = conversation_repository.by_id(db, conversation_id)
     return {
         'id': conversation.id,
@@ -185,6 +191,7 @@ def detail(db: Session, user: User, conversation_id: str) -> dict[str, object]:
         'title': conversation.title,
         'description': conversation.description,
         'disappearing_timer_seconds': conversation.disappearing_timer_seconds,
+        'muted_until': utc_iso(membership.muted_until) if membership.muted_until else None,
         'participants': [
             {'role': row.role, 'user': serialize_user(user_repository.by_id(db, row.user_id))}
             for row in conversation_repository.participants(db, conversation_id)

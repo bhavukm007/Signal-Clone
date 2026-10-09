@@ -18,6 +18,10 @@ export interface Attachment {
   url: string;
 }
 
+export interface ConversationAttachment extends Attachment {
+  message: { id: string; sender_id: string; sender: User; created_at: string };
+}
+
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type MessageType = 'text' | 'image' | 'file' | 'system';
 

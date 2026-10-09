@@ -12,6 +12,7 @@ import { PrivacySection } from '../../../components/settings/PrivacySection';
 import { NotificationsSection } from '../../../components/settings/NotificationsSection';
 import { AppearanceSection } from '../../../components/settings/AppearanceSection';
 import { ComingSoon } from '../../../components/settings/ComingSoon';
+import { AvatarCropDialog } from '../../../components/settings/AvatarCropDialog';
 
 export default function Settings() {
   const user = useAuthStore((state) => state.user);
@@ -22,6 +23,10 @@ export default function Settings() {
   const [displayName, setDisplayName] = useState('');
   const [about, setAbout] = useState('');
   const [saving, setSaving] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
   const avatarInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setDisplayName(user?.display_name || '');
@@ -42,11 +47,38 @@ export default function Settings() {
   async function updateAvatar(file: File | undefined) {
     if (!file || !user) return;
     try {
-      const result = await authApi.uploadAvatar(file);
+      setCropFile(file);
+    } catch {
+      notify('Profile photo could not be updated.');
+    }
+  }
+  async function savePhoto() {
+    if (!photoFile || !user) return;
+    setPhotoSaving(true);
+    try {
+      const result = await authApi.uploadAvatar(photoFile);
       setUser({ ...user, avatar_url: result.avatar_url });
+      setPhotoFile(null);
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
       notify('Profile photo updated.');
     } catch {
       notify('Profile photo could not be updated.');
+    } finally {
+      setPhotoSaving(false);
+    }
+  }
+  async function removePhoto() {
+    if (!user) return;
+    try {
+      await authApi.removeAvatar();
+      setUser({ ...user, avatar_url: null });
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      notify('Profile photo removed.');
+    } catch {
+      notify('Profile photo could not be removed.');
     }
   }
   async function logout() {
@@ -73,7 +105,9 @@ export default function Settings() {
       <section className="settings-section">
         <h2>Profile</h2>
         <div className="settings-profile">
-          {user && <UserAvatar user={user} />}
+          {user && (
+            <UserAvatar user={photoPreview ? { ...user, avatar_url: photoPreview } : user} />
+          )}
           <div>
             <b>{user?.display_name}</b>
             <small>{user?.phone_number || user?.username}</small>
@@ -112,6 +146,16 @@ export default function Settings() {
             }}
           />
         </div>
+        {photoFile && (
+          <Button variant="primary" disabled={photoSaving} onClick={() => void savePhoto()}>
+            {photoSaving ? 'Saving photo…' : 'Save photo'}
+          </Button>
+        )}
+        {user?.avatar_url && (
+          <Button variant="secondary" onClick={() => void removePhoto()}>
+            Remove photo
+          </Button>
+        )}
         <Button
           variant="primary"
           disabled={!displayName.trim() || saving}
@@ -132,6 +176,17 @@ export default function Settings() {
       <Button variant="danger" onClick={() => void logout()}>
         Log out
       </Button>
+      {cropFile && (
+        <AvatarCropDialog
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onApply={(file, preview) => {
+            setPhotoFile(file);
+            setPhotoPreview(preview);
+            setCropFile(null);
+          }}
+        />
+      )}
     </section>
   );
 }

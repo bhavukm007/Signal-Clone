@@ -4,6 +4,7 @@ import { BellOff, Timer } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import type { Conversation } from '@/types/models';
 import { conversationTime } from '@/lib/formatters';
+import { useUiStore } from '@/store/uiStore';
 
 export function ConversationItem({
   conversation,
@@ -28,17 +29,22 @@ export function ConversationItem({
       : '';
 
   return (
-    <Link
+    <div
       className={`conversation-item ${selected ? 'selected' : ''} ${conversation.unread_count ? 'unread' : ''}`}
-      href={`/chat/${conversation.id}`}
     >
-      <Avatar
-        name={title}
-        color={conversation.avatar_color}
-        imageUrl={peer?.avatar_url}
-        online={conversation.is_online}
-      />
-      <span className="conversation-copy">
+      <button
+        className="conversation-avatar-trigger"
+        aria-label={`Open ${title} profile`}
+        onClick={() => peer && useUiStore.getState().openProfile(peer)}
+      >
+        <Avatar
+          name={title}
+          color={conversation.avatar_color}
+          imageUrl={peer?.avatar_url}
+          online={conversation.is_online}
+        />
+      </button>
+      <Link className="conversation-copy" href={`/chat/${conversation.id}`}>
         <span className="conversation-title">
           <b>{title}</b>
           <time>{time}</time>
@@ -49,10 +55,10 @@ export function ConversationItem({
           {muted && <BellOff size={13} />}
           {conversation.disappearing_timer_seconds ? <Timer size={13} /> : null}
         </span>
-      </span>
+      </Link>
       {conversation.unread_count > 0 && (
         <span className="unread-badge">{conversation.unread_count}</span>
       )}
-    </Link>
+    </div>
   );
 }

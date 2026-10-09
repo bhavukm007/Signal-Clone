@@ -23,6 +23,7 @@ class ConversationPatch(BaseModel):
     is_pinned: bool | None = None
     is_archived: bool | None = None
     muted_until: datetime | None = None
+    mute_notifications: bool | None = None
     disappearing_timer_seconds: int | None = Field(default=None, ge=0, le=31536000)
 
 

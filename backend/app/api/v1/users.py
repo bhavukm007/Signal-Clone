@@ -35,3 +35,8 @@ async def upload_avatar(
     user: User = Depends(get_current_user),
 ):
     return await upload_service.update_avatar(db, user, file)
+
+
+@router.delete('/me/avatar', status_code=204)
+def remove_avatar(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    upload_service.remove_avatar(db, user)

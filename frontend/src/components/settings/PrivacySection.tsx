@@ -27,7 +27,21 @@ export function PrivacySection() {
         client.invalidateQueries({ queryKey: ['conversations'] }),
         client.invalidateQueries({ queryKey: ['conversation'] }),
       ]);
-      useUiStore.getState().notify('Contact unblocked.');
+      useUiStore.getState().notify('Contact unblocked.', {
+        label: 'Undo',
+        run: () => {
+          void contactApi
+            .setBlocked(userId, true)
+            .then(() =>
+              Promise.all([
+                client.invalidateQueries({ queryKey: ['contacts'] }),
+                client.invalidateQueries({ queryKey: ['conversations'] }),
+                client.invalidateQueries({ queryKey: ['conversation'] }),
+              ]),
+            )
+            .catch(() => useUiStore.getState().notify('Contact could not be blocked again.'));
+        },
+      });
     } catch {
       useUiStore.getState().notify('Contact privacy setting could not be updated.');
     }
