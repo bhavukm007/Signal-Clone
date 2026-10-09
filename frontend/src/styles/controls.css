@@ -1,0 +1,203 @@
+}
+.avatar {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 600;
+  overflow: visible;
+}
+.avatar.small {
+  height: 34px;
+  width: 34px;
+  font-size: 12px;
+}
+.avatar.tiny {
+  height: 24px;
+  width: 24px;
+  font-size: 9px;
+}
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.online-dot {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  border: 2px solid var(--signal-app);
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #35b85a;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #0006;
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+.modal-card {
+  position: relative;
+  background: var(--signal-app);
+  width: min(440px, calc(100vw - 32px));
+  max-height: 85dvh;
+  overflow: auto;
+  border-radius: 14px;
+  padding: 26px;
+  box-shadow: 0 12px 48px #0003;
+}
+.modal-card h2 {
+  margin: 0 40px 18px 0;
+}
+.modal-close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+}
+.modal-list {
+  max-height: 360px;
+  overflow: auto;
+  margin: 14px 0;
+}
+.contact-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  border-radius: 8px;
+}
+.contact-row:hover {
+  background: var(--signal-selected);
+}
+.contact-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.contact-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+.blocked-banner {
+  padding: 8px 16px;
+  color: var(--signal-muted);
+  background: var(--signal-selected);
+  text-align: center;
+}
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: 600;
+  background: var(--signal-blue);
+  color: white;
+}
+.secondary-button {
+  background: var(--signal-selected);
+  color: var(--signal-text);
+}
+.danger-button {
+  background: #d94444;
+}
+.input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0;
+}
+.text-input {
+  border: 1px solid var(--signal-divider);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--signal-app);
+  outline-color: var(--signal-blue);
+}
+.field-label {
+  font-size: 13px;
+  color: var(--signal-muted);
+}
+.input-error {
+  color: #d94444;
+  font-size: 12px;
+}
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: var(--signal-app);
+}
+.auth-card,
+.welcome-card {
+  width: min(420px, calc(100vw - 36px));
+  padding: 34px;
+  border: 1px solid var(--signal-divider);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px #0000000d;
+}
+.auth-card h1,
+.welcome-card h1 {
+  font-size: 24px;
+  margin: 15px 0 8px;
+}
+.auth-card p,
+.welcome-card p {
+  color: var(--signal-muted);
+  line-height: 1.5;
+}
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 22px 0;
+}
+.auth-card small,
+.welcome-card small {
+  display: block;
+  color: var(--signal-muted);
+  margin-top: 14px;
+}
+.back-link {
+  color: var(--signal-blue);
+}
+.welcome-card {
+  text-align: center;
+}
+.welcome-card .primary-button {
+  width: 100%;
+  margin: 22px 0 0;
+}
+.brand-mark {
+  margin: auto;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: var(--signal-blue);
+  color: white;
+}

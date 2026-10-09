@@ -1,0 +1,234 @@
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--signal-app);
+  color: var(--signal-text);
+  font:
+    14px 'Inter Variable',
+    system-ui,
+    sans-serif;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+.app-shell {
+  height: 100dvh;
+  display: flex;
+  background: var(--signal-app);
+}
+.sidebar {
+  display: flex;
+  width: 404px;
+  min-width: 404px;
+  border-right: 1px solid var(--signal-divider);
+}
+.nav-rail {
+  width: 64px;
+  border-right: 1px solid var(--signal-divider);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 8px;
+}
+.nav-rail > a {
+  height: 40px;
+  width: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--signal-muted);
+}
+.nav-rail > a:hover,
+.icon-button:hover {
+  background: var(--signal-selected);
+  color: var(--signal-blue);
+}
+.nav-rail > a:last-child {
+  margin-top: auto;
+}
+.conversation-sidebar {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.sidebar-header {
+  height: 64px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-header h1 {
+  font-size: 21px;
+  margin: 0;
+}
+.icon-button {
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  height: 38px;
+  width: 38px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--signal-muted);
+  flex: none;
+}
+.search-bar {
+  margin: 2px 14px 12px;
+  background: var(--signal-search);
+  height: 38px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  color: var(--signal-muted);
+}
+.search-bar input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+}
+.search-bar button {
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.conversation-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.conversation-item {
+  min-height: 72px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.16s;
+}
+.conversation-item:hover {
+  background: var(--signal-search);
+}
+.conversation-item.selected {
+  background: var(--signal-selected);
+}
+.conversation-copy {
+  min-width: 0;
+  flex: 1;
+}
+.conversation-title,
+.conversation-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.conversation-title b {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conversation-title time {
+  color: var(--signal-muted);
+  font-size: 11px;
+  flex: none;
+}
+.conversation-preview {
+  margin-top: 6px;
+  color: var(--signal-muted);
+  font-size: 13px;
+  justify-content: flex-start;
+}
+.conversation-preview:not(:has(svg)) {
+  display: block;
+  text-overflow: ellipsis;
+}
+.unread .conversation-preview {
+  color: var(--signal-text);
+  font-weight: 600;
+}
+.unread-badge {
+  background: var(--signal-blue);
+  color: white;
+  border-radius: 14px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+.compose-fab {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--signal-blue);
+  color: white;
+  box-shadow: 0 3px 12px #0002;
+}
+.app-main {
+  flex: 1;
+  min-width: 0;
+}
+.reconnecting-banner {
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 16px;
+  padding: 6px 14px;
+  color: var(--signal-text);
+  background: var(--signal-selected);
+  box-shadow: 0 2px 8px #0002;
+}
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--signal-muted);
+  gap: 10px;
+}
+.empty-state h2 {
+  color: var(--signal-text);
+  font-weight: 500;
+  margin: 8px 0 0;
+}
+.empty-state p {
+  margin: 0;
+}
+.empty-state small {
+  margin-top: 22px;
+}

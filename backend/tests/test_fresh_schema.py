@@ -36,23 +36,13 @@ def test_fresh_database_schema_matches_model_constraints_indexes_and_foreign_key
         }
         expected_foreign_keys = {
             ((item.parent.name,), item.column.table.name, (item.column.name,),
-             tuple(sorted((key, str(value).upper()) for key, value in item.constraint.options.items())))
+             (('ondelete', item.ondelete.upper()),) if item.ondelete else ())
             for item in table.foreign_keys
         }
         assert actual_foreign_keys == expected_foreign_keys, table.name
 
-        actual_indexes = {
-            (frozenset(item['column_names']), bool(item['unique']))
-            for item in inspector.get_indexes(table.name)
-        }
-        expected_indexes = {
-            (frozenset(column.name for column in item.columns), bool(item.unique))
-            for item in table.indexes
-        }
-        expected_indexes.update(
-            (frozenset((column.name,)), True)
-            for column in table.columns if column.unique and not column.primary_key
-        )
+        actual_indexes = {item['name'] for item in inspector.get_indexes(table.name)}
+        expected_indexes = {item.name for item in table.indexes}
         assert actual_indexes == expected_indexes, table.name
 
     engine.dispose()

@@ -1,0 +1,88 @@
+@media (max-width: 900px) {
+  .sidebar {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+  }
+  .nav-rail {
+    display: none;
+  }
+  .conversation-sidebar {
+    width: 100%;
+  }
+  .app-main {
+    display: none;
+  }
+  .app-shell:has(.chat-view) .sidebar {
+    display: none;
+  }
+  .app-shell:has(.chat-view) .app-main {
+    display: block;
+    width: 100%;
+  }
+  .app-shell:has(.settings-page) .sidebar {
+    display: none;
+  }
+  .app-shell:has(.settings-page) .app-main {
+    display: block;
+    width: 100%;
+  }
+  .mobile-back {
+    display: grid;
+  }
+  .settings-page > header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .settings-back {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--signal-selected);
+  }
+  .chat-header {
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .chat-header .icon-button {
+    width: 34px;
+  }
+  .message-list {
+    padding: 14px;
+  }
+  .message-row {
+    max-width: 88%;
+  }
+  .composer-wrap {
+    padding: 8px;
+  }
+  .empty-state {
+    display: none;
+  }
+}
+.scroll-latest {
+  position: fixed;
+  right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px);
+  z-index: 5;
+  display: block;
+  margin: 0;
+  border: 1px solid var(--signal-divider);
+  border-radius: 18px;
+  padding: 8px 14px;
+  background: var(--signal-app);
+  box-shadow: 0 2px 10px #0002;
+  color: var(--signal-text);
+}
+
+@media (max-width: 480px) {
+  .scroll-latest {
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    padding: 7px 11px;
+  }
+}

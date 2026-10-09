@@ -7,21 +7,14 @@ import {
   Video,
   MoreVertical,
   Search,
-  Send,
-  Smile,
-  Paperclip,
   ShieldCheck,
   X,
-  Check,
-  CheckCheck,
-  Clock3,
 } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
-import { dayLabel, fullTime } from '@/lib/formatters';
 import { useMessageActions } from '@/hooks/useMessageActions';
 import { useTyping } from '@/hooks/useTyping';
 import { EMPTY_TYPING_LIST, useChatStore } from '@/store/chatStore';
@@ -31,8 +24,9 @@ import { useAuthStore } from '@/store/authStore';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import type { Attachment } from '@/types/models';
-import { AuthenticatedAttachment } from '@/components/chat/AuthenticatedAttachment';
 import { useMediaObjectUrl } from '@/hooks/useMediaObjectUrl';
+import { MessageTimeline } from '@/components/chat/MessageTimeline';
+import { MessageComposer } from '@/components/chat/MessageComposer';
 
 export function ChatView() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -63,7 +57,6 @@ export function ChatView() {
   const [draft, setDraft] = useState('');
   const [reply, setReply] = useState<string | null>(null);
   const [showLatest, setShowLatest] = useState(false);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const lightboxUrl = useMediaObjectUrl(lightbox);
@@ -233,109 +226,15 @@ export function ChatView() {
             <button onClick={() => void retryMessages()}>Retry</button>
           </div>
         )}
-        {visibleMessages.map((message, index) => {
-          const prior = visibleMessages[index - 1];
-          const grouped =
-            prior?.sender_id === message.sender_id &&
-            new Date(message.created_at).getTime() - new Date(prior.created_at).getTime() < 300000;
-          const fresh =
-            !prior ||
-            new Date(prior.created_at).toDateString() !==
-              new Date(message.created_at).toDateString();
-          const incoming = message.sender_id !== user?.id;
-          const replyMessage = message.reply_to_id
-            ? visibleMessages.find((item) => item.id === message.reply_to_id)
-            : undefined;
-          return (
-            <div key={message.id}>
-              {fresh && (
-                <div className="date-divider">
-                  <span>{dayLabel(message.created_at)}</span>
-                </div>
-              )}
-              {message.type === 'system' ? (
-                <div className="system-message">{message.body}</div>
-              ) : (
-                <article
-                  className={`message-row ${incoming ? 'incoming' : 'outgoing'} ${grouped ? 'grouped' : ''}`}
-                >
-                  <div className="bubble">
-                    {conversation.type === 'group' && incoming && !grouped && (
-                      <b className="group-sender" style={{ color: message.sender.avatar_color }}>
-                        {message.sender.display_name}
-                      </b>
-                    )}
-                    {replyMessage && (
-                      <button
-                        className="quoted-reply"
-                        onClick={() =>
-                          document
-                            .getElementById(`message-${replyMessage.id}`)
-                            ?.scrollIntoView({ behavior: 'smooth' })
-                        }
-                      >
-                        <b>{replyMessage.sender.display_name}</b>
-                        <span>{replyMessage.body}</span>
-                      </button>
-                    )}
-                    <div id={`message-${message.id}`}>{message.body}</div>
-                    {message.attachments.map((attachment) => (
-                      <AuthenticatedAttachment
-                        key={attachment.id}
-                        attachment={attachment}
-                        onPreview={setLightbox}
-                      />
-                    ))}
-                    <footer>
-                      <time title={fullTime(message.created_at)}>
-                        {fullTime(message.created_at)}
-                      </time>
-                      {!incoming && (
-                        <span
-                          className={`ticks ${message.status === 'read' ? 'read' : ''}`}
-                          aria-label={`Message ${message.status}`}
-                        >
-                          {message.status === 'sending' ? (
-                            <Clock3 size={13} />
-                          ) : message.status === 'sent' ? (
-                            <Check size={14} />
-                          ) : (
-                            <CheckCheck size={15} />
-                          )}
-                        </span>
-                      )}
-                    </footer>
-                  </div>
-                  <button
-                    className="reply-action"
-                    aria-label="Reply"
-                    onClick={() => setReply(message.id)}
-                  >
-                    ↩
-                  </button>
-                  <button
-                    className="reaction-action"
-                    aria-label="React with heart"
-                    onClick={() =>
-                      message.reactions?.some(
-                        (item) => item.emoji === '❤️' && item.user_ids.includes(user?.id ?? ''),
-                      )
-                        ? removeReaction(message.id)
-                        : react(message.id, '❤️')
-                    }
-                  >
-                    ♡
-                  </button>
-                  {message.reactions?.map((r) => (
-                    <span className="reaction-chip" key={r.emoji}>
-                      {r.emoji} {r.count}
-                    </span>
-                  ))}
-                </article>
-              )}
-            </div>
-          );
-        })}
+        <MessageTimeline
+          messages={visibleMessages}
+          conversationType={conversation.type}
+          currentUserId={user?.id}
+          onReply={setReply}
+          onReact={react}
+          onRemoveReaction={removeReaction}
+          onPreviewAttachment={setLightbox}
+        />
         {typingIds.length > 0 && (
           <div className="typing-indicator">
             <i />
@@ -353,96 +252,23 @@ export function ChatView() {
           </button>
         )}
       </div>
-      <div className="composer-wrap">
-        {reply && (
-          <div className="reply-preview">
-            <span>Replying to {messages.find((item) => item.id === reply)?.body || 'message'}</span>
-            <button onClick={() => setReply(null)}>×</button>
-          </div>
-        )}
-        {pendingAttachments.length > 0 && (
-          <div className="attachment-staging">
-            {pendingAttachments.map((item) => (
-              <span key={item.id}>
-                📎 {item.file_name}
-                <button
-                  aria-label={`Remove ${item.file_name}`}
-                  onClick={() =>
-                    setPendingAttachments((items) => items.filter((file) => file.id !== item.id))
-                  }
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="composer">
-          <div className="emoji-control">
-            <button
-              className="icon-button"
-              aria-label="Emoji"
-              onClick={() => setEmojiOpen((value) => !value)}
-            >
-              <Smile />
-            </button>
-            {emojiOpen && (
-              <div className="emoji-popover">
-                {['😀', '😂', '❤️', '👍', '🎉', '🙏', '🙂', '🔥'].map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      setDraft((value) => `${value}${emoji}`);
-                      setEmojiOpen(false);
-                    }}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <textarea
-            value={draft}
-            placeholder="Write a message…"
-            rows={1}
-            disabled={blocked}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              typing(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-          />
-          <label className="icon-button attach-button" aria-label="Attach file">
-            <Paperclip />
-            <input
-              type="file"
-              hidden
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const attachment = await upload(file);
-                  if (attachment) setPendingAttachments((items) => [...items, attachment]);
-                  e.target.value = '';
-                }
-              }}
-            />
-          </label>
-          <button
-            className="send-button"
-            aria-label="Send"
-            onClick={submit}
-            disabled={blocked || (!draft.trim() && !pendingAttachments.length)}
-          >
-            <Send size={18} />
-          </button>
-        </div>
-      </div>
+      <MessageComposer
+        draft={draft}
+        onDraftChange={setDraft}
+        onTyping={typing}
+        onSubmit={submit}
+        blocked={blocked}
+        replyText={reply === null ? undefined : messages.find((item) => item.id === reply)?.body || ''}
+        onClearReply={() => setReply(null)}
+        attachments={pendingAttachments}
+        onRemoveAttachment={(id) =>
+          setPendingAttachments((items) => items.filter((item) => item.id !== id))
+        }
+        onUpload={async (file) => {
+          const attachment = await upload(file);
+          if (attachment) setPendingAttachments((items) => [...items, attachment]);
+        }}
+      />
       {lightbox && lightboxUrl && (
         <Modal title="Image preview" onClose={() => setLightbox(null)}>
           <Image
