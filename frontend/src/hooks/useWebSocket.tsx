@@ -9,6 +9,7 @@ import { useUiStore } from '@/store/uiStore';
 import { WsClient } from '@/lib/ws';
 import type { Message } from '@/types/models';
 import type { WsFrame } from '@/types/ws';
+import { updateConversationPreview } from '@/lib/conversationPreview';
 
 export type SendEvent = (type: string, payload: Record<string, unknown>) => boolean;
 const SocketContext = createContext<SendEvent>(() => false);
@@ -20,6 +21,7 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
   if (frame.type === 'message.new') {
     const data = payload as { message: Message };
     chat.addMessage(data.message);
+    updateConversationPreview(queryClient, data.message);
     const currentUserId = useAuthStore.getState().user?.id;
     const notificationsEnabled = usePreferencesStore.getState().messageNotifications;
     if (

@@ -7,6 +7,7 @@ import { useUiStore } from '@/store/uiStore';
 import type { Message } from '@/types/models';
 import type { SendEvent } from '@/hooks/useWebSocket';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { updateConversationPreview } from '@/lib/conversationPreview';
 
 export function useMessages(conversationId: string, sendEvent: SendEvent) {
   const queryClient = useQueryClient();
@@ -36,7 +37,11 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
   }, [conversationId, history, setMessages, setActiveConversation]);
 
   const send = useMutation({
-    mutationFn: (input: { body: string; replyToId?: string; attachmentIds?: string[] }) => {
+    mutationFn: (input: {
+      body: string;
+      replyToId?: string;
+      attachments: Message['attachments'];
+    }) => {
       if (!user) throw new Error('Your session has expired. Please sign in again.');
       const clientMessageId = crypto.randomUUID();
       const optimistic: Message = {
@@ -45,7 +50,11 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
         sender_id: user.id,
         sender: user,
         body: input.body,
-        type: input.attachmentIds?.length ? 'file' : 'text',
+        type: input.attachments[0]?.mime_type.startsWith('image/')
+          ? 'image'
+          : input.attachments.length
+            ? 'file'
+            : 'text',
         client_message_id: clientMessageId,
         created_at: new Date().toISOString(),
         edited_at: null,
@@ -53,16 +62,24 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
         expires_at: null,
         reply_to_id: input.replyToId ?? null,
         status: 'sending',
-        attachments: [],
+        attachments: input.attachments,
         optimistic: true,
       };
       addMessage(optimistic);
+      updateConversationPreview(queryClient, optimistic);
       return messageApi
-        .send(conversationId, input.body, clientMessageId, input.replyToId, input.attachmentIds)
+        .send(
+          conversationId,
+          input.body,
+          clientMessageId,
+          input.replyToId,
+          input.attachments.map((attachment) => attachment.id),
+        )
         .then((message) => ({ message, clientMessageId }));
     },
     onSuccess: ({ message, clientMessageId }) => {
       useChatStore.getState().acknowledgeMessage(clientMessageId, message.id, message);
+      updateConversationPreview(queryClient, message);
       void queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       void queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
@@ -101,7 +118,7 @@ export function useMessages(conversationId: string, sendEvent: SendEvent) {
     hasPrevious: query.hasNextPage,
     loadPrevious: query.fetchNextPage,
     sending: send.isPending,
-    sendMessage: (body: string, replyToId?: string, attachmentIds?: string[]) =>
-      send.mutate({ body, replyToId, attachmentIds }),
+    sendMessage: (body: string, replyToId?: string, attachments: Message['attachments'] = []) =>
+      send.mutate({ body, replyToId, attachments }),
   };
 }

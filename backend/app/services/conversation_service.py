@@ -90,10 +90,18 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
             users_by_conversation.setdefault(conversation_id, []).append(participant_user)
     last_message_ids = [conversation.last_message_id for _, conversation, _ in rows if conversation.last_message_id]
     last_rows = db.execute(
-        select(Message, User).join(User, User.id == Message.sender_id)
+        select(Message, User, Attachment.file_name, Attachment.mime_type)
+        .join(User, User.id == Message.sender_id)
+        .outerjoin(Attachment, Attachment.message_id == Message.id)
         .where(Message.id.in_(last_message_ids))
+        .order_by(Attachment.id)
     ).all()
-    last_by_id = {message.id: (message, sender) for message, sender in last_rows}
+    last_by_id: dict[str, tuple[Message, User]] = {}
+    attachment_by_message: dict[str, tuple[str, str]] = {}
+    for message, sender, file_name, mime_type in last_rows:
+        last_by_id[message.id] = (message, sender)
+        if file_name:
+            attachment_by_message.setdefault(message.id, (file_name, mime_type))
     blocked_pairs = set(db.execute(
         select(Contact.owner_id, Contact.contact_user_id).where(
             Contact.is_blocked.is_(True),
@@ -115,11 +123,18 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
         preview = None
         if last_row:
             message, sender = last_row
+            attachment = attachment_by_message.get(message.id)
+            preview_text = message.body or (
+                'Photo' if attachment and attachment[1].startswith('image/')
+                else f'📎 {attachment[0]}' if attachment
+                else 'Start a conversation'
+            )
             preview = {
                 'id': message.id,
                 'sender_id': message.sender_id,
                 'sender': serialize_user(sender),
                 'body': message.body,
+                'preview_text': preview_text,
                 'type': message.type,
                 'created_at': utc_iso(message.created_at),
             }

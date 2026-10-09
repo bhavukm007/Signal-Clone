@@ -26,6 +26,7 @@ export interface MessagePreview {
   sender_id: string;
   sender: User;
   body: string;
+  preview_text?: string;
   type: MessageType;
   created_at: string;
 }

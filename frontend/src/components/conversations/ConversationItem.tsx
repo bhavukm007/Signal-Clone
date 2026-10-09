@@ -14,7 +14,10 @@ export function ConversationItem({
 }) {
   const peer = conversation.participants[0];
   const title = conversation.title || peer?.display_name || 'Conversation';
-  const preview = conversation.last_message?.body || 'Start a conversation';
+  const preview =
+    conversation.last_message?.preview_text ||
+    conversation.last_message?.body ||
+    'Start a conversation';
   const muted = Boolean(
     conversation.muted_until && new Date(conversation.muted_until).getTime() > Date.now(),
   );
