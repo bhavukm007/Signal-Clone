@@ -180,6 +180,12 @@
   color: var(--signal-muted);
   margin-top: 14px;
 }
+.server-wakeup-note {
+  margin: 0;
+  color: var(--signal-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
 .back-link {
   color: var(--signal-blue);
 }

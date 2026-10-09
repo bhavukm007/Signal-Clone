@@ -8,13 +8,14 @@ import { useAuthStore } from '@/store/authStore';
 export default function Verify() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [wakingUp, setWakingUp] = useState(false);
   const router = useRouter();
   const setSession = useAuthStore((s) => s.setSession);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const identifier = sessionStorage.getItem('signal-identifier') || '';
     try {
-      const result = await authApi.verifyOtp(identifier, code);
+      const result = await authApi.verifyOtp(identifier, code, () => setWakingUp(true));
       setSession(result.token, result.user);
       router.replace(result.is_new_user ? '/profile' : '/');
     } catch (err) {
@@ -40,6 +41,11 @@ export default function Verify() {
         />
         <small>Use 123456</small>
         <Button variant="primary">Continue</Button>
+        {wakingUp && (
+          <p className="server-wakeup-note" role="status">
+            Waking up the server… Free servers can take up to a minute to respond.
+          </p>
+        )}
       </form>
     </section>
   );

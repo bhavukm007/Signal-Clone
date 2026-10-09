@@ -8,6 +8,7 @@ import { authApi } from '@/lib/auth';
 export default function Register() {
   const [identifier, setIdentifier] = useState('');
   const [busy, setBusy] = useState(false);
+  const [wakingUp, setWakingUp] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   async function submit(e: React.FormEvent) {
@@ -16,7 +17,7 @@ export default function Register() {
     setBusy(true);
     setError('');
     try {
-      await authApi.requestOtp(identifier.trim());
+      await authApi.requestOtp(identifier.trim(), () => setWakingUp(true));
       sessionStorage.setItem('signal-identifier', identifier.trim());
       router.push('/verify');
     } catch (err) {
@@ -42,8 +43,13 @@ export default function Register() {
           error={error}
         />
         <Button variant="primary" disabled={busy}>
-          {busy ? 'Sending…' : 'Continue'}
+          {wakingUp ? 'Waking up the server…' : busy ? 'Sending…' : 'Continue'}
         </Button>
+        {wakingUp && (
+          <p className="server-wakeup-note" role="status">
+            Waking up the server… Free servers can take up to a minute to respond.
+          </p>
+        )}
       </form>
       <small>Demo sign-in: +91 90000 00001 or +91 90000 00002</small>
     </section>

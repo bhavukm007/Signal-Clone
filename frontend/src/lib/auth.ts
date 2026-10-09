@@ -8,16 +8,24 @@ export interface AuthResult {
 }
 
 export const authApi = {
-  requestOtp: (identifier: string) =>
-    apiRequest<{ ok: boolean; hint: string }>('/auth/request-otp', {
-      method: 'POST',
-      body: JSON.stringify({ identifier }),
-    }),
-  verifyOtp: (identifier: string, code: string) =>
-    apiRequest<AuthResult>('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, code }),
-    }),
+  requestOtp: (identifier: string, onWakeupRetry?: () => void) =>
+    apiRequest<{ ok: boolean; hint: string }>(
+      '/auth/request-otp',
+      {
+        method: 'POST',
+        body: JSON.stringify({ identifier }),
+      },
+      onWakeupRetry,
+    ),
+  verifyOtp: (identifier: string, code: string, onWakeupRetry?: () => void) =>
+    apiRequest<AuthResult>(
+      '/auth/verify-otp',
+      {
+        method: 'POST',
+        body: JSON.stringify({ identifier, code }),
+      },
+      onWakeupRetry,
+    ),
   me: () => apiRequest<User>('/auth/me'),
   updateProfile: (display_name: string, about?: string) =>
     apiRequest<User>('/auth/profile', {

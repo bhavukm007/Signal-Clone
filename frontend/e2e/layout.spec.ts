@@ -20,6 +20,31 @@ test('WebSocket URL derives secure and local schemes and honors an explicit over
   ).toBe('wss://socket.example.test/custom');
 });
 
+test('onboarding retries a transient cold-start response and explains the wait', async ({
+  page,
+}) => {
+  let postAttempts = 0;
+  await page.route(`${api}/auth/request-otp`, async (route) => {
+    if (route.request().method() === 'POST' && postAttempts++ === 0) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'NOT_READY', message: 'Starting' } }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/welcome');
+  await page.getByRole('link', { name: 'Get started' }).click();
+  await page.getByLabel('Phone number or username').fill('+91 90000 00001');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('status')).toContainText('Waking up the server…');
+  await expect(page).toHaveURL(/\/verify$/);
+  expect(postAttempts).toBe(2);
+});
+
 async function createSession(identifier = '+91 90000 00001') {
   await fetch(`${api}/auth/request-otp`, {
     method: 'POST',

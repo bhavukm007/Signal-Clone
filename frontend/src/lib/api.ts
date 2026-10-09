@@ -15,14 +15,50 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+const wakeupRetryDelays = [1000, 2000, 4000, 8000, 15000, 15000, 15000];
+
+async function fetchWithWakeupRetry(
+  url: string,
+  init: RequestInit,
+  onRetry?: () => void,
+): Promise<Response> {
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(url, init);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+      const delay = wakeupRetryDelays[attempt];
+      if (!onRetry || delay === undefined) throw error;
+      onRetry();
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+
+    const delay = wakeupRetryDelays[attempt];
+    if (![502, 503, 504].includes(response.status) || !onRetry || delay === undefined)
+      return response;
+    onRetry();
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
+export async function apiRequest<T>(
+  path: string,
+  init: RequestInit = {},
+  onWakeupRetry?: () => void,
+): Promise<T> {
   const headers = new Headers(init.headers);
   const token = useAuthStore.getState().token;
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(init.body instanceof FormData) && init.body !== undefined) {
     headers.set('Content-Type', 'application/json');
   }
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetchWithWakeupRetry(
+    `${API_BASE_URL}${path}`,
+    { ...init, headers },
+    onWakeupRetry,
+  );
   if (!response.ok) {
     const data = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string };
