@@ -151,3 +151,47 @@ This section supersedes the earlier score and open-work estimates above for the 
 | Multi-instance realtime delivery | Open. Presence and WebSocket fan-out use a per-process in-memory manager. |
 | Real end-to-end encryption, calls, Stories, and linked devices | Open product gaps; encryption copy and call/story/device affordances remain demo placeholders. |
 | Broader browser matrix and production hosting checks | Open. Browser checks use Chromium locally; production CORS/TLS, cross-device behavior, and a three-or-more-recipient receipt scenario were not exercised. |
+
+## H. New message and parity audit (2026-10-09)
+
+This re-score supersedes Section G for the contact picker, responsive compose, blocking UI, and visual audit work completed in this pass.
+
+| Criterion | Score | Evidence |
+|---|---:|---|
+| Functionality | 28/30 | Alphabetized picker, remote contact search, keyboard selection, group validation, block/unblock, and messaging flows pass their browser/unit coverage. |
+| UI fidelity and responsive layout | 18/20 | One compose affordance per breakpoint; 54 app/onboarding captures cover three widths and both themes. Several older screens remain intentionally simplified and exact pixel parity is not verified. |
+| Database design | 10/10 | Fresh schema is model-created and its existing test passes. |
+| Backend/API design | 9/10 | Contacts API ordering regression and full backend suite pass. |
+| Code quality | 8/10 | New behavior uses the existing API/query patterns; this pass did not refactor unrelated oversized modules. |
+| Modularity | 8/10 | Sorting/search helpers and picker list are feature-scoped. |
+| Deliverables and documentation | 8/10 | `docs/PARITY.md` records before/after findings and links the local capture set; no reference screenshots were supplied. |
+| **Total** | **89/100** | **All listed local checks passed; remaining items are recorded below.** |
+
+### Verification for this pass
+
+| Check | Result |
+|---|---|
+| `py -3.13 -m pytest` (`backend/`) | **39 passed in 10.94s**. |
+| `npm run test:unit` (`frontend/`) | **3 passed** (contact sorting, grouping, accent-insensitive matching). |
+| `npm run format:check` (`frontend/`) | Passed. |
+| `npm run lint` (`frontend/`) | Passed. |
+| `npm run typecheck` (`frontend/`) | Passed. |
+| `npm run build` (`frontend/`) | Passed; all routes generated. |
+| `npx playwright test` with local production-like backend | **23 passed**. This includes compose bounds/exclusivity, A–Z picker and keyboard flow, group creation validation, block/unblock, concurrent multi-context messaging, previews, timestamps, uploads, receipts, search, timers, and main-flow console/request assertions. |
+| Visual captures | **54 screenshots** in `docs/screenshots/parity/`: nine screens × 375/768/1280px × light/dark. |
+
+### Still open after this pass
+
+| Item | Status |
+|---|---|
+| Pixel-identical Signal UI | Open. There are no local Signal reference screenshots. The parity document records remaining differences in bubble shape/metadata, date/typing treatment, settings/group panel styling, and onboarding content. |
+| Production registration, linked devices, calls, and Stories | Open product gaps; the demo OTP and Coming Soon actions remain. |
+| Multi-instance realtime fan-out and hosted deployment | Open/unverified. No GitHub or cloud/deployment actions were performed. |
+| Unrelated large source/test file refactors | Open; not part of this UI fix. |
+
+### Commits
+
+- `7c23b75` — `feat: sort contacts alphabetically`
+- `b737142` — `feat: build Signal-style new message picker`
+- `a2c6fe8` — `fix: show one responsive compose control`
+- `9ac6b41` — `feat: manage blocked users in privacy settings`

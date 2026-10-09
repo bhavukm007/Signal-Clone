@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { resolveWebSocketUrl } from '../src/lib/constants';
 
 const api = `${process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:8000'}/api/v1`;
-const screenshots = process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? '../docs/screenshots';
+const screenshots = process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? '../docs/screenshots/parity';
 const sessionCache = new Map<string, Promise<{ token: string; user: object }>>();
 const viewports = [
   { width: 375, height: 812 },
@@ -124,6 +124,19 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
       const width = viewport.width;
       await page.goto('/');
       await expect(page.locator('.conversation-item').first()).toBeVisible();
+      const compose = page.getByRole('button', { name: 'Compose' });
+      const pencil = page.getByRole('button', { name: 'New chat' });
+      if (width < 768) {
+        await expect(compose).toBeVisible();
+        await expect(pencil).toBeHidden();
+        const fab = await compose.boundingBox();
+        expect(fab).toMatchObject({ width: 56, height: 56 });
+        expect(fab!.x).toBeGreaterThanOrEqual(0);
+        expect(fab!.y + fab!.height).toBeLessThanOrEqual(viewport.height);
+      } else {
+        await expect(pencil).toBeVisible();
+        await expect(compose).toBeHidden();
+      }
       await capture(page, theme, width, 'conversation-list');
 
       await page.goto(`/chat/${direct?.id}`);
@@ -150,9 +163,55 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
       await capture(page, theme, width, 'settings');
 
       await page.goto('/');
-      await page.getByRole('button', { name: 'New chat' }).click();
-      await expect(page.getByRole('dialog', { name: 'New message' })).toBeVisible();
+      await page.getByRole('button', { name: width < 768 ? 'Compose' : 'New chat' }).click();
+      const picker = page.getByRole('dialog', { name: 'New message' });
+      await expect(picker).toBeVisible();
+      const pickerBox = await picker.boundingBox();
+      expect(pickerBox).toBeTruthy();
+      expect(pickerBox!.x).toBeGreaterThanOrEqual(0);
+      expect(pickerBox!.y).toBeGreaterThanOrEqual(0);
+      expect(pickerBox!.x + pickerBox!.width).toBeLessThanOrEqual(width);
+      expect(pickerBox!.y + pickerBox!.height).toBeLessThanOrEqual(viewport.height);
+      await expect(page.locator('.contact-picker-scroll')).toHaveCSS('overflow-y', 'auto');
+      if (width < 768)
+        await expect(page.getByRole('navigation', { name: 'Contact letter index' })).toBeVisible();
       await capture(page, theme, width, 'new-chat');
+      await context.close();
+    }
+  }
+});
+
+test('onboarding screens fit and are captured in both themes at all target widths', async ({
+  browser,
+}) => {
+  for (const theme of ['light', 'dark']) {
+    for (const viewport of viewports) {
+      const context = await browser.newContext({ viewport });
+      const page = await context.newPage();
+      await page.addInitScript((themeName) => {
+        localStorage.setItem(
+          'signal-ui',
+          JSON.stringify({ state: { theme: themeName }, version: 0 }),
+        );
+      }, theme);
+      for (const [path, name] of [
+        ['/welcome', 'welcome'],
+        ['/register', 'phone-entry'],
+        ['/verify', 'otp'],
+        ['/profile', 'profile-setup'],
+      ]) {
+        if (path === '/verify') {
+          await page.goto('/welcome');
+          await page.evaluate(() => sessionStorage.setItem('signal-identifier', '+91 90000 00001'));
+        }
+        await page.goto(path);
+        if (path === '/welcome') {
+          await expect(page.getByRole('heading', { name: 'Signal' })).toBeVisible();
+        } else {
+          await expect(page.locator('.auth-card')).toBeVisible();
+        }
+        await capture(page, theme, viewport.width, name);
+      }
       await context.close();
     }
   }
@@ -199,7 +258,60 @@ test('new message modal starts chats without exposing destructive contact action
   await page.getByRole('button', { name: 'New chat' }).click();
   await expect(page.getByRole('dialog', { name: 'New message' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Block' })).toHaveCount(0);
-  await expect(page.locator('.contact-start').first()).toBeVisible();
+  await expect(page.locator('.contact-picker-row').first()).toBeVisible();
+  await context.close();
+});
+
+test('contact picker groups alphabetically, searches, and supports keyboard selection', async ({
+  browser,
+}) => {
+  const { context, page } = await signedInPage(browser, viewports[2], 'light');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New message' });
+  const search = page.getByRole('textbox', { name: 'Search contacts' });
+  await expect(search).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'New group' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Add contact' })).toBeVisible();
+  const names = await page.locator('.contact-picker-row b').allTextContents();
+  expect(names).toEqual(
+    [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+  );
+  await expect(page.locator('.contact-group-title').first()).toBeVisible();
+  await expect(page.locator('.contact-group-title').first()).toHaveCSS('position', 'sticky');
+  await expect(dialog.getByRole('button', { name: 'Block' })).toHaveCount(0);
+  const target = names[0];
+  expect(target).toBeTruthy();
+  await search.fill(target!);
+  await expect(page.locator('.contact-picker-row')).toHaveCount(1);
+  await search.press('ArrowDown');
+  await expect(page.locator('.contact-picker-row').first()).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.chat-header')).toBeVisible();
+  await context.close();
+});
+
+test('new group requires a name and member and uses the alphabetized picker', async ({
+  browser,
+}) => {
+  const { context, page } = await signedInPage(browser, viewports[2], 'light');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await page.getByRole('button', { name: 'New group' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New group' });
+  const create = dialog.getByRole('button', { name: 'Create' });
+  await expect(create).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Block' })).toHaveCount(0);
+  const members = dialog.locator('input[type=checkbox]');
+  await expect(members.first()).toBeVisible();
+  await members.first().check();
+  await expect(create).toBeDisabled();
+  await dialog
+    .getByRole('textbox', { name: 'Group name' })
+    .fill(`Picker ${randomUUID().slice(0, 6)}`);
+  await expect(create).toBeEnabled();
+  await expect(dialog.getByLabel('Selected members')).toBeVisible();
   await context.close();
 });
 
@@ -290,6 +402,13 @@ test('blocking confirms the action and shows the blocked conversation state', as
   await expect(page.getByText('Contact blocked.')).toBeVisible();
   await page.goto(`/chat/${conversation.id}`);
   await expect(page.locator('.blocked-banner')).toContainText('Blocked');
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Blocked users Manage' }).click();
+  const blockedDialog = page.getByRole('dialog', { name: 'Blocked users' });
+  await expect(blockedDialog.getByText(contact!.user.display_name)).toBeVisible();
+  await blockedDialog.getByRole('button', { name: 'Unblock' }).click();
+  await expect(page.getByText('Contact unblocked.')).toBeVisible();
+  await expect(blockedDialog.getByText('No blocked users')).toBeVisible();
   await context.close();
 });
 
