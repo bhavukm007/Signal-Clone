@@ -109,6 +109,32 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
   }
 });
 
+test('latest messages control stays clear of chat controls at 375px', async ({ browser }) => {
+  const session = await createSession();
+  const response = await fetch(`${api}/conversations`, {
+    headers: { Authorization: `Bearer ${session.token}` },
+  });
+  const conversations = (await response.json()) as Array<{ id: string }>;
+  const { context, page } = await signedInPage(browser, viewports[0], 'light');
+  await page.goto(`/chat/${conversations[0]?.id}`);
+  const messages = page.locator('.message-list');
+  await messages.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  const latest = page.getByRole('button', { name: '↓ Latest messages' });
+  await expect(latest).toBeVisible();
+  const latestBox = await latest.boundingBox();
+  const composerBox = await page.locator('.composer-wrap').boundingBox();
+  const headerBox = await page.locator('.chat-header').boundingBox();
+  expect(latestBox).toBeTruthy();
+  expect(composerBox).toBeTruthy();
+  expect(headerBox).toBeTruthy();
+  expect(latestBox!.y + latestBox!.height).toBeLessThanOrEqual(composerBox!.y);
+  expect(latestBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
+  await context.close();
+});
+
 test('blocking confirms the action and shows the blocked conversation state', async ({
   browser,
 }) => {
