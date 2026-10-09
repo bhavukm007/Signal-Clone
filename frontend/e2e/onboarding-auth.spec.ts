@@ -25,8 +25,15 @@ test('phone onboarding canonicalizes input and verifies the server-provided demo
     });
   });
   await page.goto('/register');
-  await page.getByLabel('Phone number or username').fill('+91-90000-00001');
-  await page.getByRole('button', { name: 'Continue' }).click();
+  const continueButton = page.getByRole('button', { name: 'Continue' });
+  await expect(continueButton).toBeDisabled();
+  const phone = page.getByLabel('Phone number');
+  await phone.fill('900000001');
+  await expect(continueButton).toBeDisabled();
+  await phone.fill('+91 90000 00001');
+  await expect(phone).toHaveValue('90000 00001');
+  await expect(continueButton).toBeEnabled();
+  await continueButton.click();
   await expect(page).toHaveURL(/\/verify$/);
   expect(requestBody.identifier).toBe('+919000000001');
   await expect(page.getByText('Demo mode: no SMS is sent. Enter 654321.')).toBeVisible();

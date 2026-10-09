@@ -23,6 +23,8 @@ export default function Profile() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+  const trimmedName = name.trim();
+  const validName = trimmedName.length >= 2 && trimmedName.length <= 50;
 
   async function loadProfile() {
     setLoading(true);
@@ -44,7 +46,7 @@ export default function Profile() {
 
   async function submit(event?: React.FormEvent) {
     event?.preventDefault();
-    if (!name.trim() || busy) return;
+    if (!validName || busy) return;
     setBusy(true);
     setError('');
     setPhotoError(false);
@@ -91,9 +93,13 @@ export default function Profile() {
             label="Display name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            required
-            maxLength={80}
+            maxLength={50}
+            aria-invalid={Boolean(name && !validName)}
+            error={name && !validName ? 'Name must contain 2–50 non-blank characters.' : undefined}
           />
+          <small className="character-counter" aria-live="polite">
+            {trimmedName.length}/50
+          </small>
           <div className="profile-photo-picker">
             <span className="field-label">Profile photo (optional)</span>
             <Avatar
@@ -129,7 +135,7 @@ export default function Profile() {
             </button>
           </div>
           {error && <p role="alert">{error}</p>}
-          <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
+          <Button type="submit" variant="primary" disabled={busy || !validName}>
             {busy ? 'Saving…' : error && !photoError ? 'Try again' : 'Continue to Signal'}
           </Button>
           {photoError && (

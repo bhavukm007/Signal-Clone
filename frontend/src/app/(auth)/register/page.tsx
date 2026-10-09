@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { authApi } from '@/lib/auth';
-import { normalizePhoneNumber, normalizePhoneOrUsername } from '@/lib/phone';
+import { normalizePhoneOrUsername } from '@/lib/phone';
 export default function Register() {
   const [identifier, setIdentifier] = useState('');
   const [busy, setBusy] = useState(false);
@@ -13,16 +13,24 @@ export default function Register() {
   const [error, setError] = useState('');
   const [usernameMode, setUsernameMode] = useState(false);
   const router = useRouter();
+  const formattedDigits = identifier
+    .replace(/\D/gu, '')
+    .replace(/^91(?=\d{10}$)/u, '')
+    .replace(/^0(?=\d{10}$)/u, '');
+  const phoneValid = /^[6-9]\d{9}$/u.test(formattedDigits);
+  const usernameValid = /^[a-zA-Z0-9_]{3,32}$/u.test(identifier.trim());
+  const canContinue = usernameMode ? usernameValid : phoneValid;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!identifier.trim()) return;
-    const numberLike = /^[+\d\s().-]+$/u.test(identifier.trim());
-    const canonical = normalizePhoneNumber(identifier);
-    if (!usernameMode && numberLike && !canonical) {
-      setError('Enter a valid phone number.');
+    if (!canContinue) {
+      setError(
+        usernameMode
+          ? 'Use 3–32 letters, numbers or underscores.'
+          : 'Enter a valid 10-digit Indian mobile number.',
+      );
       return;
     }
-    const normalized = usernameMode ? identifier.trim() : normalizePhoneOrUsername(identifier);
+    const normalized = usernameMode ? identifier.trim() : normalizePhoneOrUsername(formattedDigits);
     setBusy(true);
     setError('');
     try {
@@ -44,41 +52,76 @@ export default function Register() {
       <h1>Enter your phone number</h1>
       <p>We’ll send you a verification code to get started.</p>
       <form onSubmit={submit}>
-        <Input
-          label="Phone number or username"
-          autoComplete="username"
-          inputMode={usernameMode ? 'text' : 'tel'}
-          value={identifier}
-          onChange={(e) => {
-            const value = e.target.value;
-            setIdentifier(value);
-            const numberLike = /^[+\d\s().-]+$/u.test(value.trim());
-            setError(
-              !usernameMode &&
-                numberLike &&
-                value.trim().length >= 8 &&
-                !normalizePhoneNumber(value)
-                ? 'Enter a valid phone number.'
-                : '',
-            );
-          }}
-          placeholder={usernameMode ? 'Username' : '+91 90000 00001'}
-          error={error}
-        />
-        <Button type="submit" variant="primary" disabled={busy || !identifier.trim()}>
-          {wakingUp
-            ? 'Waking up the server…'
-            : busy
-              ? 'Sending…'
-              : error
-                ? 'Try again'
-                : 'Continue'}
+        {usernameMode ? (
+          <Input
+            label="Username"
+            autoComplete="username"
+            value={identifier}
+            onChange={(event) => {
+              setIdentifier(event.target.value);
+              setError('');
+            }}
+            onBlur={() => {
+              if (identifier && !usernameValid)
+                setError('Use 3–32 letters, numbers or underscores.');
+            }}
+            placeholder="Username"
+            error={error}
+          />
+        ) : (
+          <div className="input-field">
+            <span className="field-label">Phone number</span>
+            <div className="phone-entry">
+              <span className="phone-prefix" aria-label="Country code India">
+                +91
+              </span>
+              <input
+                id="phone-number"
+                className="text-input"
+                aria-label="Phone number"
+                aria-invalid={Boolean(error)}
+                autoComplete="tel-national"
+                inputMode="numeric"
+                value={identifier}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  if (/[a-z]/iu.test(raw)) {
+                    setError('Use digits only.');
+                    return;
+                  }
+                  const digits = raw
+                    .replace(/\D/gu, '')
+                    .replace(/^91(?=\d{10}$)/u, '')
+                    .replace(/^0(?=\d{10}$)/u, '')
+                    .slice(0, 10);
+                  setIdentifier(
+                    digits.length > 5 ? `${digits.slice(0, 5)} ${digits.slice(5)}` : digits,
+                  );
+                  setError('');
+                }}
+                onBlur={() => {
+                  if (identifier && !phoneValid)
+                    setError('Enter a valid 10-digit Indian mobile number starting with 6–9.');
+                }}
+                placeholder="90000 00001"
+              />
+            </div>
+            {error && (
+              <span className="input-error" role="alert">
+                {error}
+              </span>
+            )}
+          </div>
+        )}
+        <Button type="submit" variant="primary" disabled={busy || !canContinue}>
+          {wakingUp ? 'Waking up the server…' : busy ? 'Sending…' : 'Continue'}
         </Button>
         <button
           type="button"
           className="auth-secondary-link"
           onClick={() => {
             setUsernameMode((value) => !value);
+            setIdentifier('');
             setError('');
           }}
         >

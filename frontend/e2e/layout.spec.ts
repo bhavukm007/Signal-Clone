@@ -42,7 +42,7 @@ test('onboarding retries a transient cold-start response and explains the wait',
 
   await page.goto('/welcome');
   await page.getByRole('link', { name: 'Get started' }).click();
-  await page.getByLabel('Phone number or username').fill('+919000000001');
+  await page.getByLabel('Phone number').fill('+919000000001');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('status')).toContainText('Waking up the server…');
   await expect(page).toHaveURL(/\/verify$/);
