@@ -63,6 +63,18 @@ test('chat panes wrap long unbroken content without horizontal overflow at targe
               scrollWidth: element.scrollWidth,
               left: Math.round(rect.left),
               right: Math.round(rect.right),
+              children: [...element.children].map((child) => {
+                const node = child as HTMLElement;
+                return {
+                  tag: node.tagName,
+                  id: node.id,
+                  className: node.className,
+                  clientWidth: node.clientWidth,
+                  scrollWidth: node.scrollWidth,
+                  overflowWrap: getComputedStyle(node).overflowWrap,
+                  whiteSpace: getComputedStyle(node).whiteSpace,
+                };
+              }),
             };
           })
           .filter(
