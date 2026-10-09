@@ -11,6 +11,7 @@ import '../styles/attachments.css';
 import '../styles/utilities.css';
 import '../styles/contacts.css';
 import '../styles/panels.css';
+import '../styles/onboarding.css';
 
 export const metadata = {
   title: 'Signal',

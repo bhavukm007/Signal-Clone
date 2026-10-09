@@ -41,6 +41,10 @@ def db_session(database):
 
 @pytest.fixture
 def client(database):
+    from app.core.rate_limit import auth_rate_limiter
+
+    auth_rate_limiter._events.clear()
+
     def override_db():
         session = database()
         try:

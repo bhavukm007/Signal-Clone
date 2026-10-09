@@ -20,4 +20,4 @@ class AuthResult(BaseModel):
 
 class OtpAccepted(BaseModel):
     ok: bool = True
-    hint: str
+    demo_code: str

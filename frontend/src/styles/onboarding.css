@@ -1,0 +1,53 @@
+.otp-boxes {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 22px 0;
+}
+.otp-boxes input {
+  width: 48px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--signal-divider);
+  border-radius: 12px;
+  background: var(--signal-app);
+  text-align: center;
+  font-size: 22px;
+}
+.profile-photo-picker {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+.profile-photo-picker .avatar {
+  width: 88px;
+  height: 88px;
+  font-size: 30px;
+}
+.profile-photo-picker .secondary-button {
+  position: relative;
+  display: inline-grid;
+  min-height: 44px;
+  place-items: center;
+  padding: 0 16px;
+  border-radius: 22px;
+}
+.profile-photo-picker input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+.auth-secondary-link {
+  border: 0;
+  background: none;
+  color: var(--signal-blue);
+  text-decoration: underline;
+  min-height: 44px;
+  padding: 6px 10px;
+}
+.avatar-cropper canvas {
+  border-radius: 50%;
+}

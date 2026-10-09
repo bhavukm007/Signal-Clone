@@ -187,12 +187,13 @@ def seed(db: Session) -> None:
     now = utc_now()
     users = [
         User(
-            phone_number=f'+91 90000 0000{index + 1}',
+            phone_number=f'+91{9000000001 + index}',
             username=name.split()[0].lower(),
             display_name=name,
             about='Hey there! I am using Signal.',
             avatar_color=COLORS[index],
-            is_online=index in (0, 1, 3),
+            # Presence is process-local and is re-established by live sockets.
+            is_online=False,
             last_seen_at=now - timedelta(minutes=index * 13),
         )
         for index, name in enumerate(NAMES)

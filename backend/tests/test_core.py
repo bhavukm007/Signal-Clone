@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 
-def login(client: TestClient, phone: str = '+91 90000 00001') -> dict:
+def login(client: TestClient, phone: str = '+919000000001') -> dict:
     client.post('/api/v1/auth/request-otp', json={'identifier': phone})
     response = client.post(
         '/api/v1/auth/verify-otp',
@@ -24,8 +24,8 @@ def test_health_and_login(client: TestClient) -> None:
 
 
 def test_message_round_trip_is_idempotent(client: TestClient) -> None:
-    first = login(client, '+91 90000 00001')
-    second = login(client, '+91 90000 00002')
+    first = login(client, '+919000000001')
+    second = login(client, '+919000000002')
     headers = {'Authorization': f"Bearer {first['token']}"}
     other_headers = {'Authorization': f"Bearer {second['token']}"}
     direct = client.post(
@@ -44,8 +44,8 @@ def test_message_round_trip_is_idempotent(client: TestClient) -> None:
 
 
 def test_group_admin_rules(client: TestClient) -> None:
-    admin = login(client, '+91 90000 00001')
-    member = login(client, '+91 90000 00002')
+    admin = login(client, '+919000000001')
+    member = login(client, '+919000000002')
     headers = {'Authorization': f"Bearer {admin['token']}"}
     group = client.post(
         '/api/v1/groups',
@@ -79,6 +79,7 @@ def test_complete_schema_is_registered() -> None:
 def test_websocket_ping_round_trip(client: TestClient) -> None:
     result = login(client, '+91 90000 00003')
     with client.websocket_connect(f"/ws?token={result['token']}") as websocket:
+        assert websocket.receive_json()['type'] == 'presence.snapshot'
         websocket.send_json({'type': 'ping', 'payload': {}})
         assert websocket.receive_json() == {'type': 'pong', 'payload': {}}
 

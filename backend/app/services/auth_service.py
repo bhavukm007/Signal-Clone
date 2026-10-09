@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import create_session_token, hash_token
+from app.core.phone import normalize_identifier
 from app.db.base import utc_now
 from app.models.auth import AuthSession, OtpChallenge
 from app.models.user import User
@@ -11,12 +12,14 @@ from app.repositories import auth_repository, user_repository
 
 
 def request_otp(db: Session, identifier: str) -> dict[str, object]:
+    identifier = normalize_identifier(identifier)
     db.add(OtpChallenge(identifier=identifier, code=settings.otp_code, expires_at=utc_now() + timedelta(minutes=10)))
     db.commit()
-    return {'ok': True, 'hint': 'Use 123456'}
+    return {'ok': True, 'demo_code': settings.otp_code}
 
 
 def verify_otp(db: Session, identifier: str, code: str) -> dict[str, object]:
+    identifier = normalize_identifier(identifier)
     challenge = auth_repository.latest_otp(db, identifier)
     if challenge is None or code != settings.otp_code:
         raise HTTPException(status_code=401, detail='Invalid or expired verification code')

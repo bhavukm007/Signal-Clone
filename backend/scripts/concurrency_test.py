@@ -144,7 +144,7 @@ class StressRun:
     async def login_users(self) -> None:
         for index in range(self.users):
             identifier = (
-                f'+91 90000 0000{index + 1}' if index < 10
+                f'+91{9000000001 + index}' if index < 10
                 else f'+91 91{index:03d} 00000'
             )
             await self.request('POST', '/api/v1/auth/request-otp', json={'identifier': identifier})

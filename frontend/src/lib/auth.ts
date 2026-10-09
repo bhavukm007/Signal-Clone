@@ -9,7 +9,7 @@ export interface AuthResult {
 
 export const authApi = {
   requestOtp: (identifier: string, onWakeupRetry?: () => void) =>
-    apiRequest<{ ok: boolean; hint: string }>(
+    apiRequest<{ ok: boolean; demo_code: string }>(
       '/auth/request-otp',
       {
         method: 'POST',

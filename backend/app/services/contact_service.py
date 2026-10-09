@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.contact import Contact
 from app.models.user import User
+from app.core.phone import normalize_identifier
 from app.repositories import contact_repository, user_repository
 
 
@@ -41,6 +42,11 @@ def serialize_contact(db: Session, contact: Contact) -> dict[str, object]:
 def add_contact(db: Session, owner: User, user_id: str | None, identifier: str | None) -> Contact:
     if not user_id and not identifier:
         raise HTTPException(status_code=422, detail="Provide user_id or identifier")
+    if identifier:
+        try:
+            identifier = normalize_identifier(identifier)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
     other = (
         user_repository.by_id(db, user_id)
         if user_id

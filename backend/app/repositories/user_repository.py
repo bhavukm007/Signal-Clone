@@ -1,6 +1,7 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.phone import normalize_identifier
 from app.models.user import User
 
 
@@ -9,6 +10,7 @@ def by_id(db: Session, user_id: str) -> User | None:
 
 
 def by_identifier(db: Session, identifier: str) -> User | None:
+    identifier = normalize_identifier(identifier)
     return db.scalar(
         select(User).where(or_(User.phone_number == identifier, User.username == identifier))
     )
@@ -22,8 +24,13 @@ def create(db: Session, user: User) -> User:
 
 def search(db: Session, query: str, excluded_user_id: str) -> list[User]:
     pattern = f'%{query}%'
+    try:
+        normalized = normalize_identifier(query)
+    except ValueError:
+        normalized = ''
     statement = select(User).where(
         User.id != excluded_user_id,
-        or_(User.display_name.ilike(pattern), User.phone_number.ilike(pattern), User.username.ilike(pattern)),
+        or_(User.display_name.ilike(pattern), User.phone_number.ilike(pattern), User.username.ilike(pattern),
+            User.phone_number == normalized),
     ).limit(20)
     return list(db.scalars(statement))
