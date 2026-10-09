@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import uuid4
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
@@ -12,6 +12,23 @@ from app.repositories.contact_repository import is_blocked
 from app.repositories.attachment_repository import by_id as get_attachment
 from app.repositories.attachment_repository import for_message as list_attachments
 from app.services.presentation_service import serialize_user
+
+
+def _next_created_at(db: Session, conversation_id: str):
+    """Give server-created messages a strict order even within one clock tick."""
+    latest = db.scalar(
+        select(Message.created_at)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(1)
+    )
+    now = utc_now()
+    if latest is not None:
+        if latest.tzinfo is None:
+            latest = latest.replace(tzinfo=now.tzinfo)
+        if now <= latest:
+            now = latest + timedelta(microseconds=1)
+    return now
 
 
 def create_message(
@@ -37,6 +54,8 @@ def create_message(
     attachment_ids = attachment_ids or []
     existing = message_repository.by_idempotency_key(db, sender.id, client_message_id)
     if existing is not None:
+        if existing.conversation_id != conversation_id:
+            raise HTTPException(status_code=409, detail='Client message id was already used')
         return existing
     if not body.strip() and not attachment_ids:
         raise HTTPException(status_code=422, detail='Message text or an attachment is required')
@@ -66,6 +85,7 @@ def create_message(
         client_message_id=client_message_id,
         reply_to_id=reply_to_id,
         expires_at=expires_at,
+        created_at=_next_created_at(db, conversation_id),
     )
     db.add(message)
     db.flush()
@@ -91,6 +111,7 @@ def create_system_message(db: Session, conversation_id: str, actor: User, body: 
         body=body,
         type='system',
         client_message_id=f'system-{uuid4()}',
+        created_at=_next_created_at(db, conversation_id),
     )
     db.add(message)
     db.flush()
@@ -114,21 +135,38 @@ def get_history(db: Session, user: User, conversation_id: str, before_id: str | 
 
 
 def mark_delivered(db: Session, user_id: str, message_id: str) -> Receipt | None:
-    receipt = db.scalar(select(Receipt).where(Receipt.message_id == message_id, Receipt.user_id == user_id))
-    if receipt is not None and receipt.status == 'sent':
-        receipt.status = 'delivered'
-        receipt.delivered_at = utc_now()
+    changed = db.execute(
+        update(Receipt)
+        .where(
+            Receipt.message_id == message_id,
+            Receipt.user_id == user_id,
+            Receipt.status == 'sent',
+        )
+        .values(status='delivered', delivered_at=func.coalesce(Receipt.delivered_at, utc_now()))
+    ).rowcount
+    if changed:
         db.commit()
-    return receipt
+    db.expire_all()
+    return db.scalar(
+        select(Receipt).where(Receipt.message_id == message_id, Receipt.user_id == user_id)
+    )
 
 
 def mark_pending_delivered(db: Session, user_id: str) -> list[Receipt]:
-    receipts = db.scalars(select(Receipt).where(Receipt.user_id == user_id, Receipt.status == 'sent')).all()
-    for receipt in receipts:
-        receipt.status = 'delivered'
-        receipt.delivered_at = utc_now()
+    receipt_ids = list(db.scalars(
+        select(Receipt.id).where(Receipt.user_id == user_id, Receipt.status == 'sent')
+    ))
+    if not receipt_ids:
+        db.commit()
+        return []
+    db.execute(
+        update(Receipt)
+        .where(Receipt.id.in_(receipt_ids), Receipt.status == 'sent')
+        .values(status='delivered', delivered_at=func.coalesce(Receipt.delivered_at, utc_now()))
+    )
     db.commit()
-    return list(receipts)
+    db.expire_all()
+    return list(db.scalars(select(Receipt).where(Receipt.id.in_(receipt_ids))))
 
 
 def mark_read(db: Session, user: User, conversation_id: str, up_to_message_id: str) -> list[Receipt]:
@@ -138,23 +176,41 @@ def mark_read(db: Session, user: User, conversation_id: str, up_to_message_id: s
     if cursor is None or cursor.conversation_id != conversation_id:
         raise HTTPException(status_code=404, detail='Read cursor not found')
     participant = conversation_repository.membership(db, conversation_id, user.id)
-    participant.last_read_message_id = cursor.id
-    receipts = db.scalars(
-        select(Receipt)
+    current_cursor = (
+        message_repository.by_id(db, participant.last_read_message_id)
+        if participant.last_read_message_id else None
+    )
+    if current_cursor is None or (cursor.created_at, cursor.id) > (
+        current_cursor.created_at, current_cursor.id
+    ):
+        participant.last_read_message_id = cursor.id
+    receipt_ids = list(db.scalars(
+        select(Receipt.id)
         .join(Message, Receipt.message_id == Message.id)
         .where(
             Receipt.user_id == user.id,
             Message.conversation_id == conversation_id,
-            Message.created_at <= cursor.created_at,
+            or_(
+                Message.created_at < cursor.created_at,
+                and_(Message.created_at == cursor.created_at, Message.id <= cursor.id),
+            ),
             Receipt.status != 'read',
         )
-    ).all()
-    for receipt in receipts:
-        receipt.status = 'read'
-        receipt.delivered_at = receipt.delivered_at or utc_now()
-        receipt.read_at = utc_now()
+    ))
+    now = utc_now()
+    if receipt_ids:
+        db.execute(
+            update(Receipt)
+            .where(Receipt.id.in_(receipt_ids), Receipt.status != 'read')
+            .values(
+                status='read',
+                delivered_at=func.coalesce(Receipt.delivered_at, now),
+                read_at=func.coalesce(Receipt.read_at, now),
+            )
+        )
     db.commit()
-    return list(receipts)
+    db.expire_all()
+    return list(db.scalars(select(Receipt).where(Receipt.id.in_(receipt_ids)))) if receipt_ids else []
 
 
 def aggregate_status(db: Session, message_id: str) -> str:

@@ -1,7 +1,7 @@
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db.base import utc_now
 from app.models.conversation import Conversation, Participant
@@ -51,14 +51,22 @@ def get_or_create_direct(db: Session, user: User, user_id: str) -> Conversation:
 
 
 def list_conversations(db: Session, user: User, query: str | None) -> list[dict[str, object]]:
-    cursor_time = select(Message.created_at).where(
-        Message.id == Participant.last_read_message_id
-    ).scalar_subquery()
-    unread_count = select(func.count(Message.id)).where(
+    read_cursor_message = aliased(Message)
+    unread_count = select(func.count(Message.id)).select_from(Message).outerjoin(
+        read_cursor_message,
+        read_cursor_message.id == Participant.last_read_message_id,
+    ).where(
         Message.conversation_id == Conversation.id,
         Message.sender_id != user.id,
         Message.deleted_at.is_(None),
-        or_(Participant.last_read_message_id.is_(None), Message.created_at > cursor_time),
+        or_(
+            Participant.last_read_message_id.is_(None),
+            Message.created_at > read_cursor_message.created_at,
+            and_(
+                Message.created_at == read_cursor_message.created_at,
+                Message.id > Participant.last_read_message_id,
+            ),
+        ),
     ).correlate(Conversation, Participant).scalar_subquery()
     rows = db.execute(
         select(Participant, Conversation, unread_count)

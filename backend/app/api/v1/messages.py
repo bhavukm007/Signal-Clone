@@ -29,11 +29,10 @@ async def create_message(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    message = message_service.create_message(
+    message = await realtime_service.send_message(
         db, conversation_id, user, body.body, body.client_message_id,
         body.reply_to_id, body.attachment_ids,
     )
-    await realtime_service.publish_message(db, message, user.id)
     return message_service.serialize_message(db, message)
 
 

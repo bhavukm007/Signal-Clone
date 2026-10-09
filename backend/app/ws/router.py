@@ -23,16 +23,10 @@ async def handle_frame(websocket: WebSocket, db: Session, user: User, frame: dic
         conversation_id = str(payload.get('conversation_id', ''))
         if not conversation_id:
             raise ValueError('conversation_id is required')
-        message = message_service.create_message(
+        await realtime_service.send_message(
             db, conversation_id, user, message_body.body, message_body.client_message_id,
-            message_body.reply_to_id, message_body.attachment_ids,
+            message_body.reply_to_id, message_body.attachment_ids, acknowledge_sender=True,
         )
-        await manager.send_user(user.id, EventType.MESSAGE_ACK.value, {
-            'client_message_id': message.client_message_id,
-            'message_id': message.id,
-            'status': 'sent',
-        })
-        await realtime_service.publish_message(db, message, user.id)
         return
     if event_type == 'typing.start' or event_type == 'typing.stop':
         conversation_id = str(payload.get('conversation_id', ''))
@@ -121,6 +115,11 @@ async def websocket_endpoint(
                     })
                 else:
                     raise
+            finally:
+                # WebSocket dependency sessions outlive a single frame. Release any
+                # read transaction before awaiting the next frame (notably on SQLite).
+                if db.in_transaction():
+                    db.commit()
     except WebSocketDisconnect:
         pass
     finally:

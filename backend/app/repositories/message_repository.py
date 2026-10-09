@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.message import Message, Reaction, Receipt
@@ -23,8 +23,11 @@ def history(db: Session, conversation_id: str, before: Message | None, limit: in
         Message.deleted_at.is_(None),
     )
     if before is not None:
-        statement = statement.where(Message.created_at < before.created_at)
-    statement = statement.order_by(Message.created_at.desc()).limit(limit)
+        statement = statement.where(or_(
+            Message.created_at < before.created_at,
+            and_(Message.created_at == before.created_at, Message.id < before.id),
+        ))
+    statement = statement.order_by(Message.created_at.desc(), Message.id.desc()).limit(limit)
     return list(reversed(list(db.scalars(statement))))
 
 
