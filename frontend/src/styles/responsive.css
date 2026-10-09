@@ -96,9 +96,9 @@
   }
   .message-row {
     max-width: 88%;
+    padding: 0;
   }
-  .message-row .reply-action,
-  .message-row .reaction-action {
+  .message-row .message-actions {
     display: none;
   }
   .composer-wrap {
