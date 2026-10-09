@@ -19,15 +19,16 @@ Sign in as `+91 90000 00001` or `+91 90000 00002` and enter the fixed OTP `12345
 
 ## Local setup
 
-Requirements: Python 3.11+, Node.js 20+, npm.
+Requirements: Python 3.11, Node.js 20.19+, and npm. In PowerShell, confirm the Python launcher sees 3.11 with `py -3.11 --version` before creating the virtual environment.
 
 ### Backend
 
 ```powershell
 cd backend
-python -m venv .venv
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 uvicorn app.main:app --reload --env-file .env
 ```
@@ -51,10 +52,13 @@ Open [http://localhost:3000](http://localhost:3000). The example frontend URLs t
 
 | Variable | Service | Example / purpose |
 |---|---|---|
-| `DATABASE_URL` | Backend | `sqlite:///./signal.db`; Render disk: `sqlite:////data/signal.db` |
+| `DATABASE_URL` | Backend | `sqlite:///./signal.db`; optional paid Render disk: `sqlite:////data/signal.db` |
 | `CORS_ORIGINS` | Backend | Comma-separated exact web origins, such as `http://localhost:3000` |
-| `UPLOAD_DIR` | Backend | `uploads`; Render disk: `/data/uploads` |
-| `OTP_CODE` | Backend | Mock verification code, defaults to `123456` |
+| `UPLOAD_DIR` | Backend | `uploads`; optional paid Render disk: `/data/uploads` |
+| `OTP_CODE` | Backend | Mock verification code; the public demo uses `123456` |
+| `ENVIRONMENT` | Backend | `development` locally; `production` activates production checks |
+| `JWT_SECRET` | Backend | Required in production; set a unique random value of at least 32 characters |
+| `MAX_UPLOAD_BYTES` | Backend | Upload cap in bytes; defaults to `10485760` (10 MiB) |
 | `NEXT_PUBLIC_API_URL` | Frontend | API root including `/api/v1` |
 | `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket endpoint; use `wss://` in production |
 
@@ -88,10 +92,13 @@ erDiagram
   users ||--o{ auth_sessions : owns
   users ||--o{ contacts : owner
   users ||--o{ contacts : contact
+  users ||--o{ conversations : creates
   users ||--o{ conversation_participants : joins
   conversations ||--o{ conversation_participants : includes
   users ||--o{ messages : sends
   conversations ||--o{ messages : contains
+  messages o|--o{ conversations : latest_message
+  messages o|--o{ conversation_participants : last_read
   messages ||--o{ messages : replies_to
   messages ||--o{ message_receipts : tracks
   users ||--o{ message_receipts : receives
@@ -116,6 +123,8 @@ erDiagram
     string id PK
     string user_id FK
     string token_hash UK
+    string device_name
+    datetime created_at
     datetime expires_at
     datetime revoked_at
   }
@@ -125,6 +134,7 @@ erDiagram
     string code
     datetime expires_at
     datetime consumed_at
+    datetime created_at
   }
   contacts {
     string id PK
@@ -132,6 +142,7 @@ erDiagram
     string contact_user_id FK
     string nickname
     boolean is_blocked
+    datetime created_at
   }
   conversations {
     string id PK
@@ -144,6 +155,7 @@ erDiagram
     integer disappearing_timer_seconds
     string last_message_id FK
     datetime last_activity_at
+    datetime created_at
   }
   conversation_participants {
     string id PK
@@ -166,6 +178,7 @@ erDiagram
     text body
     string type
     datetime created_at
+    datetime edited_at
     datetime deleted_at
     datetime expires_at
   }
@@ -182,6 +195,7 @@ erDiagram
     string message_id FK
     string user_id FK
     string emoji
+    datetime created_at
   }
   attachments {
     string id PK
@@ -217,9 +231,11 @@ Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP req
 | Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
 | Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
 | Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
-| Uploads/media/system | `POST /uploads`, authenticated `GET /media/attachments/{id}`, authenticated `GET /media/avatars/{user_id}`, `GET /health`, interactive `/docs` |
+| Uploads/media/system | `POST /uploads`, authenticated `GET /media/attachments/{id}`, authenticated `GET /media/avatars/{user_id}`, `GET /health` (outside the API prefix), interactive `/docs` |
 
 Cursor history is returned oldest-to-newest within each page; the UI requests older pages using the first message ID as `before`. Group membership and role checks happen in backend services, not only in the UI.
+
+Authentication limits are per source address and normalized identifier: OTP requests are limited to 5 per 10 minutes and verification attempts to 10 per 10 minutes. The backend also applies per-address caps. Message bodies are limited to 10,000 characters, and uploads default to 10 MiB (`MAX_UPLOAD_BYTES`).
 
 ## WebSocket protocol
 
@@ -267,6 +283,7 @@ For groups, the aggregate considers current participants (`left_at IS NULL`): it
 
 - OTP is always the configured mock code (default `123456`); no SMS provider is contacted.
 - Session tokens are random opaque bearer values stored as SHA-256 hashes with expiry/revocation; they are not JWTs. This keeps session validation explicit for both REST and WebSockets.
+- `JWT_SECRET` is required for a production-mode startup as a deployment secret check; it is not used to sign these opaque database-backed session tokens.
 - “End-to-end encrypted” is UI copy only. There is no cryptographic message encryption or key exchange.
 - Calls, Stories, and linked devices are “Coming Soon” placeholders. Notifications are in-app toasts; there is no push service.
 - Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured upload directory and delivered only through authenticated media routes. Attachment routes require active conversation membership; avatar routes require self or contact access.
@@ -275,7 +292,7 @@ For groups, the aggregate considers current participants (`left_at IS NULL`): it
 
 ## Deployment
 
-See [DEPLOY.md](DEPLOY.md) for click-by-click GitHub → Render → Vercel steps. Render mounts a persistent disk at `/data` and uses `DATABASE_URL=sqlite:////data/signal.db`; without a persistent disk SQLite resets with an ephemeral deploy. Vercel must set `NEXT_PUBLIC_API_URL` at build time; `NEXT_PUBLIC_WS_URL` is optional and defaults to the matching `ws://` or `wss://` API origin. The backend `CORS_ORIGINS` must contain the exact Vercel origin.
+See [DEPLOY.md](DEPLOY.md) for the Render and Vercel setup sequence. The Render free service has an ephemeral filesystem: SQLite data and uploaded files reset after a restart, spin-down, or redeploy, and startup recreates the demo seed. A persistent disk mounted at `/data` is an optional paid-plan configuration. Vercel must set `NEXT_PUBLIC_API_URL` at build time; `NEXT_PUBLIC_WS_URL` is optional and derives `ws://` or `wss://` from the API URL. Set backend `CORS_ORIGINS` to the exact deployed frontend origin.
 
 ## Tests and verification
 
