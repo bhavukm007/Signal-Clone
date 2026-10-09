@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { Bell, FileText, ShieldCheck, Timer } from 'lucide-react';
+import { Bell, FileText, MoreVertical, ShieldCheck, Timer } from 'lucide-react';
 import { attachmentApi, contactApi, conversationApi } from '@/lib/chatApi';
 import { useConversationDetails } from '@/hooks/useConversationDetails';
 import { useAuthStore } from '@/store/authStore';
@@ -61,6 +61,7 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
   const [description, setDescription] = useState('');
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [memberMenuId, setMemberMenuId] = useState<string | null>(null);
   const [mediaTab, setMediaTab] = useState<'media' | 'files'>('media');
   const { data: mediaMessages = [] } = useQuery({
     queryKey: ['conversation-media', conversationId],
@@ -295,13 +296,58 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
                   <small>{role === 'admin' ? 'Admin' : 'Member'}</small>
                 </span>
                 {isAdmin && user.id !== viewer?.id && (
-                  <div className="member-actions">
+                  <div
+                    className="member-menu-wrap"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node))
+                        setMemberMenuId(null);
+                    }}
+                  >
                     <button
-                      onClick={() => void setRole(user.id, role === 'admin' ? 'member' : 'admin')}
+                      className="icon-button member-menu-trigger"
+                      aria-label={`Member actions for ${user.display_name}`}
+                      aria-expanded={memberMenuId === user.id}
+                      onClick={() =>
+                        setMemberMenuId((value) => (value === user.id ? null : user.id))
+                      }
                     >
-                      {role === 'admin' ? 'Demote' : 'Promote'}
+                      <MoreVertical size={18} />
                     </button>
-                    <button onClick={() => void removeMember(user.id)}>Remove</button>
+                    {memberMenuId === user.id && (
+                      <div
+                        className="member-menu"
+                        role="menu"
+                        aria-label={`${user.display_name} actions`}
+                      >
+                        <button
+                          role="menuitem"
+                          onClick={() => {
+                            void setRole(user.id, role === 'admin' ? 'member' : 'admin');
+                            setMemberMenuId(null);
+                          }}
+                        >
+                          {role === 'admin' ? 'Remove admin' : 'Make admin'}
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => {
+                            useOverlayStore.getState().push({
+                              kind: 'confirmation',
+                              title: `Remove ${user.display_name}?`,
+                              message: 'They will no longer see messages in this group.',
+                              confirmLabel: 'Remove from group',
+                              onConfirm: async () => {
+                                useOverlayStore.getState().closeTop();
+                                await removeMember(user.id);
+                              },
+                            });
+                            setMemberMenuId(null);
+                          }}
+                        >
+                          Remove from group
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -342,8 +388,22 @@ export function GroupInfoPanel({ conversationId }: { conversationId: string }) {
               )}
             </>
           )}
-          <Button variant="danger" onClick={() => void removeMember(viewer?.id || '')}>
-            Leave group
+          <Button
+            variant="danger"
+            onClick={() =>
+              useOverlayStore.getState().push({
+                kind: 'confirmation',
+                title: 'Exit group?',
+                message: 'You will stop receiving messages from this group.',
+                confirmLabel: 'Exit group',
+                onConfirm: async () => {
+                  useOverlayStore.getState().closeTop();
+                  await removeMember(viewer?.id || '');
+                },
+              })
+            }
+          >
+            Exit group
           </Button>
         </>
       )}

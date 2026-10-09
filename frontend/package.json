@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src --ext .ts,.tsx",
-    "test:unit": "tsc --module commonjs --target es2022 --moduleResolution node --outDir .test-build src/lib/contacts.ts src/lib/contacts.test.ts src/lib/phone.ts src/lib/phone.test.ts && node --test .test-build/contacts.test.js .test-build/phone.test.js",
+    "test:unit": "tsc --module commonjs --target es2022 --moduleResolution node --outDir .test-build src/lib/contacts.ts src/lib/contacts.test.ts src/lib/phone.ts src/lib/phone.test.ts src/lib/systemMessages.ts src/lib/systemMessages.test.ts && node --test .test-build/contacts.test.js .test-build/phone.test.js .test-build/systemMessages.test.js",
     "test:e2e": "playwright test",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "format:check": "prettier --check --end-of-line auto \"src/**/*.{ts,tsx,css}\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\" package.json next.config.js playwright.config.ts tsconfig.json",

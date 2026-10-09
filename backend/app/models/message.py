@@ -19,6 +19,7 @@ class Message(Base):
     conversation_id: Mapped[str] = mapped_column(ForeignKey('conversations.id', ondelete='CASCADE'), index=True)
     sender_id: Mapped[str] = mapped_column(ForeignKey('users.id'))
     body: Mapped[str] = mapped_column(Text, default='')
+    system_data: Mapped[Optional[str]] = mapped_column(Text)
     type: Mapped[str] = mapped_column(String(8), default='text')
     reply_to_id: Mapped[Optional[str]] = mapped_column(ForeignKey('messages.id'))
     client_message_id: Mapped[str] = mapped_column(String(100))

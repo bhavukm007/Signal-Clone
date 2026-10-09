@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select, update
@@ -102,7 +103,13 @@ def create_message(
     return message
 
 
-def create_system_message(db: Session, conversation_id: str, actor: User, body: str) -> Message:
+def create_system_message(
+    db: Session,
+    conversation_id: str,
+    actor: User,
+    body: str,
+    system_data: dict[str, object] | None = None,
+) -> Message:
     conversation = conversation_repository.by_id(db, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail='Conversation not found')
@@ -110,6 +117,7 @@ def create_system_message(db: Session, conversation_id: str, actor: User, body: 
         conversation_id=conversation_id,
         sender_id=actor.id,
         body=body,
+        system_data=json.dumps(system_data) if system_data else None,
         type='system',
         client_message_id=f'system-{uuid4()}',
         created_at=_next_created_at(db, conversation_id),
@@ -298,6 +306,12 @@ async def set_reaction_and_broadcast(
 
 
 def serialize_message(db: Session, message: Message) -> dict[str, object]:
+    system_data = None
+    if message.system_data:
+        try:
+            system_data = json.loads(message.system_data)
+        except (TypeError, json.JSONDecodeError):
+            system_data = None
     sender = user_repository.by_id(db, message.sender_id)
     reaction_counts: dict[str, list[str]] = {}
     for reaction in message_repository.reactions_for_message(db, message.id):
@@ -308,6 +322,7 @@ def serialize_message(db: Session, message: Message) -> dict[str, object]:
         'sender_id': message.sender_id,
         'sender': serialize_user(sender),
         'body': message.body,
+        'system_data': system_data,
         'type': message.type,
         'client_message_id': message.client_message_id,
         'created_at': utc_iso(message.created_at),

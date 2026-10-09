@@ -86,13 +86,13 @@ All IDs are UUID strings. SQLite enables foreign keys, WAL and a 30-second busy 
 
 | Table | Main columns and rules |
 |---|---|
-| `users` | `id` PK; unique nullable `phone_number`, unique nullable `username`; profile, online and last-seen fields; CHECK phone or username exists. |
+| `users` | `id` PK; unique nullable `phone_number`, unique nullable `username`; profile, online, last-seen and discoverability fields; CHECK phone or username exists. |
 | `auth_sessions` | `id` PK; `user_id` FK cascade/index; unique indexed `token_hash`; device, created, expiry/index, revoked. |
 | `otp_challenges` | `id` PK; indexed identifier, code, expiry, consumed and created times. |
 | `contacts` | `id` PK; owner/contact user FKs cascade/indexed; nickname, blocked, created; unique owner/user and no-self CHECK. |
 | `conversations` | `id` PK; type CHECK, creator FK, unique nullable direct key, group fields, timer, last-message FK, activity/index and created time. |
 | `conversation_participants` | `id` PK; conversation/user FKs, role CHECK, unique pair; joined/left, read-cursor FK, mute, archived and pinned. |
-| `messages` | `id` PK; conversation FK cascade/index, sender FK; body/type CHECK, reply self-FK, sender/client ID unique, created/edited/deleted/expiry/index. |
+| `messages` | `id` PK; conversation FK cascade/index, sender FK; body/type CHECK, reply self-FK, structured `system_data`, sender/client ID unique, created/edited/deleted/expiry/index. |
 | `message_receipts` | `id` PK; message/user FKs cascade/index, status CHECK, unique message/user, delivered/read times. |
 | `message_reactions` | `id` PK; message/user FKs cascade/index, unique message/user, emoji and created time. |
 | `attachments` | `id` PK; nullable message FK cascade/index and uploader FK cascade/index; filename, MIME, size-positive CHECK, storage path and image dimensions. |
@@ -125,7 +125,7 @@ REST base is `/api/v1`; all routes require a bearer session except OTP request a
 | Area | Implemented routes |
 |---|---|
 | Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `GET /auth/me`, `PUT /auth/profile`, `POST /auth/logout` |
-| Users / contacts | `GET /users/search`, `PATCH /users/me`, `POST/DELETE /users/me/avatar`, `GET/POST /contacts`, `DELETE /contacts/{id}`, `POST/PUT /contacts/{id}/block`, `PUT /contacts/users/{user_id}/block` |
+| Users / contacts | `GET /users/search`, `GET /users/suggestions?limit=8`, `PATCH /users/me`, `PATCH /users/me/discoverability`, `POST/DELETE /users/me/avatar`, `GET/POST /contacts`, `DELETE /contacts/{id}`, `POST/PUT /contacts/{id}/block`, `PUT /contacts/users/{user_id}/block` |
 | Conversations / messages | `GET /conversations`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}`, `GET/POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT/DELETE /messages/{id}/reaction` |
 | Groups / files | `POST /groups`, `GET/POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}`, `POST /uploads`, authenticated `GET /media/attachments/{id}`, `GET /media/conversations/{id}/attachments`, `GET /media/avatars/{user_id}` |
 
@@ -139,6 +139,11 @@ Connect WebSocket at `/ws?token=...`. Every frame uses `{type,payload}`.
 ## Design decisions and known limitations
 
 - No migration framework is used; fresh schema comes from SQLAlchemy metadata. Existing database files are not automatically upgraded in a defined migration sequence.
+- The seed creates ten discoverable sample people and the `Signal Welcome` demo bot. For a newly profiled account, the welcome-bot service makes a DM and sends a canned response after a typing event; normal message and receipt services handle persistence and status.
+- The suggestions endpoint returns seeded demo accounts first, then other opted-in users, and excludes the current user, contacts, and blocked users. Real phone numbers are masked in the response. `users.is_discoverable` defaults to true and can be changed in Privacy settings.
+- The frontend emoji picker uses a local lightweight emoji dataset and localStorage-backed recent selections. A user has one persisted emoji reaction per message; setting another replaces the prior reaction and the update is broadcast as `reaction.updated`.
+- System messages store event kind/actor/target in `messages.system_data`; the client formats a sentence from each participant's perspective. Group role/member controls are admin-only in both UI and service validation.
+- Toasts use one shared viewport at the top-right under the app header, top-centred on phones, and offset under a panel header when a side panel is open.
 - SQLite and the in-memory socket manager/rate limiter are single-process demo choices. Horizontal scaling, multiple Render instances and shared online state need shared infrastructure.
 - Render Free has an ephemeral filesystem and cold starts; schema and demo seed return after a reset, but user-created data and uploaded files do not.
 - OTP is fixed/configurable demo behavior with no SMS; “end-to-end encrypted” is presentation copy, not cryptography. Calls, Stories and linked devices are placeholders.

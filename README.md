@@ -6,7 +6,7 @@ A full-stack desktop-style messaging demo built with Next.js, FastAPI, SQLAlchem
 
 ## Demo accounts
 
-Sign in as `+919000000001` or `+919000000002` and enter the fixed OTP `123456`. Use a second browser profile for the other account. The app seeds ten realistic users and sample conversations the first time an empty database starts.
+Sign in as `+919000000001` or `+919000000002` and enter the fixed OTP `123456`. Use a second browser profile for the other account. The app seeds ten sample people, sample conversations, and the clearly labelled `Signal Welcome` demo account the first time an empty database starts.
 
 Phone identifiers are normalized to E.164 before account lookup or creation. The input accepts `+919000000001`, `+91 90000 00001`, `+91-90000-00001`, `919000000001`, or a 10-digit Indian national number; each resolves to the same account.
 
@@ -283,15 +283,22 @@ For groups, the aggregate considers current participants (`left_at IS NULL`): it
 - [x] Realtime two-way messages, optimistic sending, idempotency, receipts, read cursors, typing, presence, reconnect/resync.
 - [x] Pagination, date dividers, grouped bubbles, replies, reactions, attachments/image preview, disappearing-message purge/timer UI.
 - [x] Privacy/notification/appearance settings, persistent light/dark preference, responsive single-pane mobile chat, keyboard shortcuts, accessibility focus handling.
+- [x] Six quick reactions plus arbitrary single-emoji reactions, live updates and a shared searchable emoji picker.
+- [x] Discoverable people suggestions with masked phone numbers, a privacy opt-out, and an isolated `Signal Welcome` bot conversation for solo evaluation.
+- [x] Structured, perspective-aware group system messages; group admin actions use per-member menus and confirmations.
 - [x] Backend layering, SQLite indexes/constraints, model-driven schema creation, startup seed, REST/WebSocket tests, live two-account smoke script, Render/Vercel config, CI.
 
 ## Assumptions and simulated parts
 
 - OTP is always the configured mock code (default `123456`); no SMS provider is contacted.
+- Phone onboarding defaults to India (+91) and accepts valid ten-digit Indian numbers beginning with 6–9. It does not provide a country selector. Suggestion phone numbers are masked; discoverability can be disabled under Settings > Privacy.
+- `Signal Welcome` is a canned demo bot, not an AI service. It creates an onboarding conversation for a newly profiled account and sends a canned response with simulated typing and normal receipts.
+- Reactions accept one Unicode emoji grapheme per user/message (up to 16 UTF-8 bytes); the reaction picker is a bundled lightweight dataset with recent selections stored locally when browser storage is available.
 - Session tokens are random opaque bearer values stored as SHA-256 hashes with expiry/revocation; they are not JWTs. This keeps session validation explicit for both REST and WebSockets.
 - `JWT_SECRET` is required for a production-mode startup as a deployment secret check; it is not used to sign these opaque database-backed session tokens.
 - “End-to-end encrypted” is UI copy only. There is no cryptographic message encryption or key exchange.
 - Calls, Stories, and linked devices are “Coming Soon” placeholders. Notifications are in-app toasts; there is no push service.
+- Toasts stack at the top right below the app header (top centre on narrow screens); a panel raises their starting position below its header.
 - Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured upload directory and delivered only through authenticated media routes. Attachment routes require active conversation membership; avatar routes require self or contact access.
 - SQLite and the WebSocket connection manager are single-instance choices. A multi-instance deployment would need a shared database and pub/sub connection broker.
 - Seed data runs only for an empty users table. The development OTP and demo accounts are intentionally predictable.

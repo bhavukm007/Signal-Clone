@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 
 from fastapi import HTTPException
 from sqlalchemy import and_, func, or_, select
@@ -14,6 +15,34 @@ from app.models.user import User
 from app.repositories import conversation_repository, message_repository, user_repository
 from app.repositories.contact_repository import is_blocked
 from app.services.presentation_service import serialize_user
+
+
+def _system_preview(db: Session, message: Message, viewer: User) -> str:
+    try:
+        data = json.loads(message.system_data or '{}')
+    except json.JSONDecodeError:
+        return message.body
+    event = data.get('event')
+    actor_is_viewer = data.get('actor_id') == viewer.id
+    target_is_viewer = data.get('target_id') == viewer.id
+    actor_user = user_repository.by_id(db, str(data.get('actor_id', '')))
+    actor_name = actor_user.display_name if actor_user else 'Someone'
+    actor = 'You' if actor_is_viewer else actor_name
+    target = 'you' if target_is_viewer else str(data.get('target_name') or 'a member')
+    if event == 'group_created':
+        return f"{actor} created the group"
+    if event == 'member_added':
+        return f'{actor} added {target}'
+    if event == 'member_removed':
+        return f'{actor} removed {target}'
+    if event == 'member_left':
+        return 'You left the group' if actor_is_viewer else f'{actor_name} left the group'
+    if event == 'member_role_changed':
+        action = 'made' if data.get('role') == 'admin' else 'removed admin from'
+        return f'{actor} {action} {target} an admin' if action == 'made' else f'{actor} {action} {target}'
+    if event == 'group_renamed':
+        return f"{actor} changed the group name to {data.get('group_name', '')}".strip()
+    return message.body
 
 
 def require_member(db: Session, conversation_id: str, user_id: str) -> Participant:
@@ -127,16 +156,20 @@ def list_conversations(db: Session, user: User, query: str | None) -> list[dict[
         if last_row:
             message, sender = last_row
             attachment = attachment_by_message.get(message.id)
-            preview_text = message.body or (
+            if message.type == 'system':
+                preview_text = _system_preview(db, message, user)
+            else:
+                preview_text = message.body or (
                 'Photo' if attachment and attachment[1].startswith('image/')
                 else f'📎 {attachment[0]}' if attachment
                 else 'Start a conversation'
-            )
+                )
             preview = {
                 'id': message.id,
                 'sender_id': message.sender_id,
                 'sender': serialize_user(sender),
                 'body': message.body,
+                'system_data': json.loads(message.system_data) if message.system_data else None,
                 'preview_text': preview_text,
                 'type': message.type,
                 'created_at': utc_iso(message.created_at),

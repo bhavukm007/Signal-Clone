@@ -45,7 +45,10 @@ def create_group(
         db.add(Participant(conversation_id=conversation.id, user_id=member_id))
     db.commit()
     db.refresh(conversation)
-    message = create_system_message(db, conversation.id, creator, f'{creator.display_name} created the group')
+    message = create_system_message(
+        db, conversation.id, creator, f'{creator.display_name} created the group',
+        {'event': 'group_created', 'actor_id': creator.id, 'group_name': name},
+    )
     return conversation, message
 
 
@@ -70,7 +73,11 @@ def add_members(db: Session, actor: User, conversation_id: str, user_ids: list[s
             added.append(target_user)
     db.commit()
     return [
-        create_system_message(db, conversation_id, actor, f'{actor.display_name} added {target.display_name}')
+        create_system_message(
+            db, conversation_id, actor, f'{actor.display_name} added {target.display_name}',
+            {'event': 'member_added', 'actor_id': actor.id, 'target_id': target.id,
+             'target_name': target.display_name},
+        )
         for target in added
     ]
 
@@ -94,7 +101,15 @@ def remove_member(db: Session, actor: User, conversation_id: str, target_id: str
         body = f'{target_user.display_name} left the group'
     else:
         body = f'{actor.display_name} removed {target_user.display_name}'
-    return create_system_message(db, conversation_id, actor, body)
+    return create_system_message(
+        db, conversation_id, actor, body,
+        {
+            'event': 'member_left' if actor.id == target_id else 'member_removed',
+            'actor_id': actor.id,
+            'target_id': target_id,
+            'target_name': target_user.display_name,
+        },
+    )
 
 
 def set_role(db: Session, actor: User, conversation_id: str, target_id: str, role: str) -> Message:
@@ -117,7 +132,11 @@ def set_role(db: Session, actor: User, conversation_id: str, target_id: str, rol
         if role == 'admin'
         else f'{actor.display_name} removed admin from {target_user.display_name}'
     )
-    return create_system_message(db, conversation_id, actor, body)
+    return create_system_message(
+        db, conversation_id, actor, body,
+        {'event': 'member_role_changed', 'actor_id': actor.id, 'target_id': target_id,
+         'target_name': target_user.display_name, 'role': role},
+    )
 
 
 def update_group(
@@ -140,7 +159,13 @@ def update_group(
         changes.append(f'{actor.display_name} updated the group description')
     db.commit()
     db.refresh(conversation)
-    message = create_system_message(db, conversation_id, actor, changes[0]) if changes else None
+    message = None
+    if changes:
+        event = 'group_renamed' if title is not None and changes[0].startswith(actor.display_name) else 'group_updated'
+        message = create_system_message(
+            db, conversation_id, actor, changes[0],
+            {'event': event, 'actor_id': actor.id, 'group_name': conversation.title},
+        )
     return conversation, message
 
 
