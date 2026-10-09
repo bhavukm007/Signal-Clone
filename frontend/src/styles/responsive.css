@@ -1,4 +1,34 @@
-@media (max-width: 900px) {
+@media (max-width: 767px) {
+  .app-shell {
+    padding-top: env(safe-area-inset-top);
+  }
+  .modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+  .modal-card {
+    width: 100%;
+    max-height: calc(var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top));
+    padding: 28px 18px max(18px, env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+  .modal-card::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: calc(50% - 18px);
+    width: 36px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--signal-muted);
+    opacity: 0.45;
+  }
+  .text-input,
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
   .sidebar {
     width: 100%;
     min-width: 0;
@@ -38,18 +68,28 @@
   .settings-back {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border: 0;
     border-radius: 50%;
     background: var(--signal-selected);
   }
   .chat-header {
-    padding: 0 8px;
+    padding: 0 max(8px, env(safe-area-inset-left)) 0 max(8px, env(safe-area-inset-right));
     gap: 6px;
   }
   .chat-header .icon-button {
-    width: 34px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+  .chat-heading b,
+  .chat-heading small {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .message-list {
     padding: 14px;
@@ -58,14 +98,51 @@
     max-width: 88%;
   }
   .composer-wrap {
-    padding: 8px;
+    padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
   .empty-state {
     display: none;
   }
 }
 
+@media (max-width: 480px) {
+  .chat-header button[aria-label='Voice call'],
+  .chat-header button[aria-label='Video call'] {
+    display: none;
+  }
+  .chat-header {
+    gap: 4px;
+    padding-inline: max(4px, env(safe-area-inset-left));
+  }
+  .chat-identity-button {
+    gap: 6px;
+    padding-inline: 2px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .icon-button,
+  .send-button,
+  .composer .attach-button,
+  .composer .emoji-control > button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .composer textarea {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 767px) {
+  .app-shell,
+  .app-main,
+  .chat-view {
+    height: var(--visual-viewport-height, 100dvh);
+    min-height: 0;
+  }
   .sidebar-header > .icon-button[aria-label='New chat'] {
     display: none;
   }
@@ -83,6 +160,7 @@
   border: 1px solid var(--signal-divider);
   border-radius: 18px;
   padding: 8px 14px;
+  min-height: 44px;
   background: var(--signal-app);
   box-shadow: 0 2px 10px #0002;
   color: var(--signal-text);

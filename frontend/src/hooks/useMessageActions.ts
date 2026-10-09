@@ -23,6 +23,10 @@ export function useMessageActions(conversationId: string) {
   return {
     react: (messageId: string, emoji: string) => reaction.mutate({ messageId, emoji }),
     removeReaction: (messageId: string) => removeReaction.mutate(messageId),
+    removeMessage: (messageId: string) =>
+      messageApi
+        .remove(messageId)
+        .then(() => client.invalidateQueries({ queryKey: ['messages', conversationId] })),
     upload: (file: File) => attachment.mutateAsync(file).catch(() => null),
     uploading: attachment.isPending,
   };

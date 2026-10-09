@@ -12,12 +12,46 @@
   padding: 0 18px;
   border-bottom: 1px solid var(--signal-divider);
 }
+.chat-identity-button {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+}
+.chat-identity-button:hover,
+.chat-identity-button:focus-visible {
+  background: var(--signal-search);
+}
 .chat-heading {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
   gap: 4px;
+}
+.blocked-composer {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--signal-divider);
+  color: var(--signal-muted);
+}
+.blocked-composer button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 20px;
+  padding: 0 14px;
+  background: var(--signal-selected);
+  color: var(--signal-blue);
 }
 .chat-heading b {
   font-weight: 600;
@@ -67,6 +101,36 @@
   max-width: 75%;
   margin: 4px 0 10px;
   align-items: flex-end;
+  touch-action: pan-y;
+}
+.message-context-menu {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  min-width: 164px;
+  padding: 5px;
+  border: 1px solid var(--signal-divider);
+  border-radius: 12px;
+  background: var(--signal-app);
+  color: var(--signal-text);
+  box-shadow: 0 8px 28px #0003;
+}
+.message-context-menu button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+}
+.message-context-menu button:hover,
+.message-context-menu button:focus-visible {
+  background: var(--signal-selected);
 }
 .message-row.incoming {
   margin-right: auto;

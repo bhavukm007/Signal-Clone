@@ -9,10 +9,13 @@ test('conversation previews update optimistically and persist attachment labels'
   const direct = await createDirect(alice, bob.user.id);
   const tab = await openChat(browser, alice, direct.id);
   const recipient = await openChat(browser, bob, direct.id);
-  const row = tab.page.locator(`.conversation-item[href="/chat/${direct.id}"]`);
+  const row = tab.page.locator('.conversation-item').filter({
+    has: tab.page.locator(`.conversation-copy[href="/chat/${direct.id}"]`),
+  });
   const preview = row.locator('.conversation-preview');
   const recipientPreview = recipient.page
-    .locator(`.conversation-item[href="/chat/${direct.id}"]`)
+    .locator('.conversation-item')
+    .filter({ has: recipient.page.locator(`.conversation-copy[href="/chat/${direct.id}"]`) })
     .locator('.conversation-preview');
   try {
     await expect(preview).toContainText('Start a conversation');

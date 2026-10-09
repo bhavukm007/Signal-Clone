@@ -76,7 +76,10 @@ test('three concurrent chats preserve group order, previews, and unread badges',
   const groupResponse = await fetch(`${api}/groups`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ name: `Concurrent ${randomUUID()}`, member_ids: [bob.user.id] }),
+    body: JSON.stringify({
+      name: `Concurrent ${randomUUID()}`,
+      member_ids: [bob.user.id, chandra.user.id],
+    }),
   });
   expect(groupResponse.ok).toBeTruthy();
   const group = (await groupResponse.json()) as { id: string };
@@ -126,13 +129,17 @@ test('three concurrent chats preserve group order, previews, and unread badges',
       chandraTab.page.locator('.message-list').getByText(dmBody, { exact: true }),
     ).toHaveCount(1);
 
-    const aliceDmRow = aliceTab.page.locator(`.conversation-item[href="/chat/${direct.id}"]`);
+    const aliceDmRow = aliceTab.page
+      .locator('.conversation-item')
+      .filter({ has: aliceTab.page.locator(`.conversation-copy[href="/chat/${direct.id}"]`) });
     await expect(aliceDmRow).toContainText(dmBody);
     await expect(aliceDmRow.locator('.unread-badge')).toHaveText('1');
 
     await bobTab.page.reload();
     await expect(bobTab.page.locator('.message-list')).toBeVisible();
-    const bobGroupRow = bobTab.page.locator(`.conversation-item[href="/chat/${group.id}"]`);
+    const bobGroupRow = bobTab.page
+      .locator('.conversation-item')
+      .filter({ has: bobTab.page.locator(`.conversation-copy[href="/chat/${group.id}"]`) });
     await expect(bobGroupRow).toContainText(aliceOrder[1]!);
     await expect(bobGroupRow.locator('.unread-badge')).toHaveCount(0);
   } finally {
