@@ -28,7 +28,7 @@ test('onboarding retries a transient cold-start response and explains the wait',
   page,
 }) => {
   let postAttempts = 0;
-  await page.route(`${api}/auth/request-otp`, async (route) => {
+  await page.route(/\/api\/v1\/auth\/request-otp(?:\?.*)?$/, async (route) => {
     if (route.request().method() === 'POST' && postAttempts++ === 0) {
       await route.fulfill({
         status: 503,
@@ -42,14 +42,14 @@ test('onboarding retries a transient cold-start response and explains the wait',
 
   await page.goto('/welcome');
   await page.getByRole('link', { name: 'Get started' }).click();
-  await page.getByLabel('Phone number or username').fill('+91 90000 00001');
+  await page.getByLabel('Phone number or username').fill('+919000000001');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('status')).toContainText('Waking up the server…');
   await expect(page).toHaveURL(/\/verify$/);
   expect(postAttempts).toBe(2);
 });
 
-async function createSession(identifier = '+91 90000 00001') {
+async function createSession(identifier = '+919000000001') {
   let session = sessionCache.get(identifier);
   if (!session) {
     session = (async () => {
@@ -80,7 +80,7 @@ async function signedInPage(
   browser: Browser,
   viewport: { width: number; height: number },
   theme: string,
-  identifier = '+91 90000 00001',
+  identifier = '+919000000001',
 ) {
   const session = await createSession(identifier);
   const context = await browser.newContext({ viewport });
@@ -205,7 +205,7 @@ test('onboarding screens fit and are captured in both themes at all target width
       ]) {
         if (path === '/verify') {
           await page.goto('/welcome');
-          await page.evaluate(() => sessionStorage.setItem('signal-identifier', '+91 90000 00001'));
+          await page.evaluate(() => sessionStorage.setItem('signal-identifier', '+919000000001'));
         }
         await page.goto(path);
         if (path === '/welcome') {
@@ -241,14 +241,15 @@ test('latest messages control stays clear of chat controls at phone, tablet, and
     const latestBox = await latest.boundingBox();
     const composerBox = await page.locator('.composer-wrap').boundingBox();
     const headerBox = await page.locator('.chat-header').boundingBox();
-    const messageListBox = await messages.boundingBox();
+    const chatBox = await page.locator('.chat-view').boundingBox();
     expect(latestBox).toBeTruthy();
     expect(composerBox).toBeTruthy();
     expect(headerBox).toBeTruthy();
-    expect(messageListBox).toBeTruthy();
+    expect(chatBox).toBeTruthy();
     expect(latestBox!.y + latestBox!.height).toBeLessThanOrEqual(composerBox!.y);
     expect(latestBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
-    expect(messageListBox!.y + messageListBox!.height).toBeLessThanOrEqual(latestBox!.y);
+    expect(latestBox!.x).toBeGreaterThanOrEqual(chatBox!.x);
+    expect(latestBox!.x + latestBox!.width).toBeLessThanOrEqual(chatBox!.x + chatBox!.width);
     await context.close();
   }
 });
@@ -423,12 +424,12 @@ test('expired messages disappear from an open chat without a refresh', async ({ 
   await fetch(`${api}/auth/request-otp`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier: '+91 90000 00002' }),
+    body: JSON.stringify({ identifier: '+919000000002' }),
   });
   const second = await fetch(`${api}/auth/verify-otp`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ identifier: '+91 90000 00002', code: '123456' }),
+    body: JSON.stringify({ identifier: '+919000000002', code: '123456' }),
   });
   const secondSession = (await second.json()) as { user: { id: string } };
   const direct = await fetch(`${api}/conversations/direct`, {
@@ -464,7 +465,7 @@ test('expired messages disappear from an open chat without a refresh', async ({ 
 test('conversation-list request failure shows a working retry control', async ({ browser }) => {
   const { context, page } = await signedInPage(browser, viewports[0], 'light');
   let attempts = 0;
-  await page.route(`${api}/conversations`, async (route) => {
+  await page.route(/\/api\/v1\/conversations(?:\?.*)?$/, async (route) => {
     attempts += 1;
     await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
   });
@@ -508,7 +509,7 @@ test('expired REST session clears the browser session and returns to welcome', a
   browser,
 }) => {
   const { context, page } = await signedInPage(browser, viewports[0], 'light');
-  await page.route(`${api}/auth/me`, async (route) => {
+  await page.route(/\/api\/v1\/auth\/me(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       status: 401,
       contentType: 'application/json',
@@ -525,6 +526,9 @@ test('expired REST session clears the browser session and returns to welcome', a
         : undefined;
     })
     .toBeNull();
+  await expect(
+    page.getByText('Your session expired. Please sign in again.', { exact: true }),
+  ).toBeVisible();
   await context.close();
 });
 

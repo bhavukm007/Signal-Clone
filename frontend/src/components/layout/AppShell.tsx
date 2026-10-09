@@ -22,24 +22,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const profileUser = useUiStore((state) => state.profileUser);
   const attachmentViewer = useUiStore((state) => state.attachmentViewer);
   const [validatedToken, setValidatedToken] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [validationAttempt, setValidationAttempt] = useState(0);
   useEffect(() => {
     if (!hydrated) return;
     if (!token) {
       router.replace('/welcome');
       return;
     }
+    setLoadError('');
     void authApi
       .me()
       .then((freshUser) => {
         setUser(freshUser);
         setValidatedToken(token);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         setValidatedToken(null);
-        useAuthStore.getState().clearSession();
-        router.replace('/welcome');
+        if (useAuthStore.getState().token === token) {
+          setLoadError(error instanceof Error ? error.message : 'Signal could not connect.');
+        }
       });
-  }, [hydrated, token, setUser, router]);
+  }, [hydrated, token, setUser, router, validationAttempt]);
+  if (loadError && token)
+    return (
+      <main className="loading-screen">
+        <p role="alert">{loadError}</p>
+        <button
+          className="primary-button"
+          onClick={() => setValidationAttempt((attempt) => attempt + 1)}
+        >
+          Retry
+        </button>
+      </main>
+    );
   if (!hydrated || (token && (!user || validatedToken !== token)))
     return (
       <main className="loading-screen">

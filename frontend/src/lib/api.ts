@@ -15,6 +15,16 @@ export class ApiError extends Error {
   }
 }
 
+function handleExpiredSession(): void {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(
+    'signal-auth-notice',
+    'Your session expired. Please sign in again.',
+  );
+  useAuthStore.getState().clearSession();
+  window.dispatchEvent(new Event('signal-session-expired'));
+}
+
 const wakeupRetryDelays = [1000, 2000, 4000, 8000, 15000, 15000, 15000];
 
 async function fetchWithWakeupRetry(
@@ -63,7 +73,7 @@ export async function apiRequest<T>(
     const data = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string };
     } | null;
-    if (response.status === 401 && token) useAuthStore.getState().clearSession();
+    if (response.status === 401 && token) handleExpiredSession();
     throw new ApiError(
       data?.error?.message ?? 'The request could not be completed.',
       response.status,
@@ -82,7 +92,7 @@ export async function fetchMedia(path: string, signal: AbortSignal): Promise<Blo
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!response.ok) {
-    if (response.status === 401 && token) useAuthStore.getState().clearSession();
+    if (response.status === 401 && token) handleExpiredSession();
     throw new ApiError('Media could not be loaded.', response.status, 'MEDIA_ERROR');
   }
   return response.blob();
