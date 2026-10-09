@@ -93,7 +93,7 @@ export function ChatView() {
         <button onClick={() => void retryConversation()}>Retry</button>
       </div>
     );
-  const blocked = conversation.is_blocked_by_me || conversation.is_blocked_by_peer;
+  const blocked = Boolean(conversation.is_blocked_by_me || conversation.is_blocked_by_peer);
   const participants = conversation.participants.map((item) => item.user);
   const peer = participants.find((item) => item.id !== user?.id);
   const title = conversation.title || peer?.display_name || 'Conversation';
@@ -235,15 +235,15 @@ export function ChatView() {
           </div>
         )}
         <div ref={bottom} />
-        {showLatest && (
-          <button
-            className="scroll-latest"
-            onClick={() => bottom.current?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            ↓ Latest messages
-          </button>
-        )}
       </div>
+      {showLatest && (
+        <button
+          className="scroll-latest"
+          onClick={() => bottom.current?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          ↓ Latest messages
+        </button>
+      )}
       <MessageComposer
         draft={draft}
         onDraftChange={setDraft}

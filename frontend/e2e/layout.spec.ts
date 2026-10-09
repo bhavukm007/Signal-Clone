@@ -128,11 +128,14 @@ test('latest messages control stays clear of chat controls at 375px', async ({ b
   const latestBox = await latest.boundingBox();
   const composerBox = await page.locator('.composer-wrap').boundingBox();
   const headerBox = await page.locator('.chat-header').boundingBox();
+  const messageListBox = await messages.boundingBox();
   expect(latestBox).toBeTruthy();
   expect(composerBox).toBeTruthy();
   expect(headerBox).toBeTruthy();
+  expect(messageListBox).toBeTruthy();
   expect(latestBox!.y + latestBox!.height).toBeLessThanOrEqual(composerBox!.y);
   expect(latestBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
+  expect(messageListBox!.y + messageListBox!.height).toBeLessThanOrEqual(latestBox!.y);
   await context.close();
 });
 
@@ -161,6 +164,25 @@ test('main chat flow has no console errors or failed requests', async ({ browser
   const conversations = (await response.json()) as Array<{ id: string }>;
   await page.goto(`/chat/${conversations[0]?.id}`);
   await expect(page.locator('.composer')).toBeVisible();
+  await expect.poll(() => errors).toEqual([]);
+  await context.close();
+});
+
+test('onboarding loads without console errors or failed resources', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: viewports[2] });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('requestfailed', (request) => {
+    errors.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`);
+  });
+  await page.goto('/welcome');
+  await expect(page.getByRole('heading', { name: 'Signal' })).toBeVisible();
   await expect.poll(() => errors).toEqual([]);
   await context.close();
 });

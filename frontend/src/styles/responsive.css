@@ -65,12 +65,9 @@
   }
 }
 .scroll-latest {
-  position: fixed;
-  right: 16px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px);
-  z-index: 5;
+  align-self: flex-end;
   display: block;
-  margin: 0;
+  margin: 0 16px 8px;
   border: 1px solid var(--signal-divider);
   border-radius: 18px;
   padding: 8px 14px;
@@ -81,8 +78,7 @@
 
 @media (max-width: 480px) {
   .scroll-latest {
-    right: 12px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    margin: 0 12px 8px;
     padding: 7px 11px;
   }
 }
