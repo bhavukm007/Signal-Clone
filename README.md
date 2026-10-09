@@ -32,7 +32,7 @@ Copy-Item .env.example .env
 uvicorn app.main:app --reload --env-file .env
 ```
 
-The backend creates tables, applies additive upgrades to earlier SQLite files, and seeds an empty database at startup. Local defaults are `sqlite:///./signal.db`, `uploads/`, `OTP_CODE=123456`, and CORS origin `http://localhost:3000`. API docs are at [http://localhost:8000/docs](http://localhost:8000/docs); health is at [http://localhost:8000/health](http://localhost:8000/health).
+At startup the backend creates the schema from the SQLAlchemy models and seeds an empty database. Local defaults are `sqlite:///./signal.db`, `uploads/`, `OTP_CODE=123456`, and CORS origin `http://localhost:3000`. API docs are at [http://localhost:8000/docs](http://localhost:8000/docs); health is at [http://localhost:8000/health](http://localhost:8000/health).
 
 ### Frontend
 
@@ -212,8 +212,8 @@ Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP req
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/request-otp`, `POST /auth/verify-otp`, `PUT /auth/profile`, `POST /auth/logout`, `GET /auth/me` |
-| Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar` |
-| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block`, `PUT /contacts/users/{user_id}/block` |
+| Users | `GET /users/search?q=`, `PATCH /users/me`, `POST /users/me/avatar`, `PUT /contacts/users/{user_id}/block` |
+| Contacts | `GET /contacts`, `POST /contacts`, `DELETE /contacts/{contact_id}`, `POST /contacts/{contact_id}/block`, `PUT /contacts/{contact_id}/block` |
 | Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
 | Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
 | Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
@@ -261,7 +261,7 @@ For groups, the aggregate considers current participants (`left_at IS NULL`): it
 - [x] Realtime two-way messages, optimistic sending, idempotency, receipts, read cursors, typing, presence, reconnect/resync.
 - [x] Pagination, date dividers, grouped bubbles, replies, reactions, attachments/image preview, disappearing-message purge/timer UI.
 - [x] Privacy/notification/appearance settings, persistent light/dark preference, responsive single-pane mobile chat, keyboard shortcuts, accessibility focus handling.
-- [x] Backend layering, SQLite indexes/constraints, startup seed, legacy SQLite upgrades, REST/WebSocket tests, live two-account smoke script, Render/Vercel config, CI.
+- [x] Backend layering, SQLite indexes/constraints, model-driven schema creation, startup seed, REST/WebSocket tests, live two-account smoke script, Render/Vercel config, CI.
 
 ## Assumptions and simulated parts
 
@@ -272,7 +272,6 @@ For groups, the aggregate considers current participants (`left_at IS NULL`): it
 - Avatar colors are deterministic user fields; avatar and attachment bytes are stored on the configured upload directory and delivered only through authenticated media routes. Attachment routes require active conversation membership; avatar routes require self or contact access.
 - SQLite and the WebSocket connection manager are single-instance choices. A multi-instance deployment would need a shared database and pub/sub connection broker.
 - Seed data runs only for an empty users table. The development OTP and demo accounts are intentionally predictable.
-- This checkout has no public GitHub remote or hosted demo URL. Publishing and deployment are outside this local implementation pass.
 
 ## Deployment
 
