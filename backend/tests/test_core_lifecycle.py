@@ -38,6 +38,8 @@ def test_disappearing_timer_purges_and_broadcasts_delete(client: TestClient, db_
 
     with client.websocket_connect(f"/ws?token={sender['token']}") as sender_socket:
         with client.websocket_connect(f"/ws?token={recipient['token']}") as recipient_socket:
+            assert sender_socket.receive_json()['type'] == 'presence.snapshot'
+            assert recipient_socket.receive_json()['type'] == 'presence.snapshot'
             assert sender_socket.receive_json()['type'] == 'presence'
             sender_socket.send_json({
                 'type': 'message.send',
@@ -94,7 +96,7 @@ def test_seed_data_is_complete_and_idempotent(db_session, client: TestClient) ->
     assert any(item['is_pinned'] for item in items)
     assert any(item['muted_until'] for item in items)
     assert any(item['type'] == 'group' for item in items)
-    demo = db_session.scalar(select(User).where(User.phone_number == '+91 90000 00001'))
+    demo = db_session.scalar(select(User).where(User.phone_number == '+919000000001'))
     assert demo is not None
     assert db_session.scalar(select(func.count(Participant.id)).where(Participant.user_id == demo.id)) >= 6
-    assert db_session.scalar(select(User).where(User.phone_number == '+91 90000 00002')) is not None
+    assert db_session.scalar(select(User).where(User.phone_number == '+919000000002')) is not None

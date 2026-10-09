@@ -201,6 +201,7 @@ a {
 .app-main {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .reconnecting-banner {
   position: absolute;

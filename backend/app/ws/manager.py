@@ -1,5 +1,6 @@
 from collections import defaultdict
 from time import monotonic
+import asyncio
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -10,16 +11,44 @@ class ConnectionManager:
         self._connections: dict[str, set[WebSocket]] = defaultdict(set)
         self._typing_last_sent: dict[tuple[str, str], float] = {}
         self._last_activity: dict[WebSocket, float] = {}
+        self._offline_tasks: dict[str, asyncio.Task[None]] = {}
+        self.offline_grace_seconds = 5.0
 
     def is_online(self, user_id: str) -> bool:
         return bool(self._connections.get(user_id))
 
     async def connect(self, user_id: str, websocket: WebSocket) -> bool:
+        self.cancel_offline(user_id)
         await websocket.accept()
         first_connection = not self.is_online(user_id)
         self._connections[user_id].add(websocket)
         self._last_activity[websocket] = monotonic()
         return first_connection
+
+    def cancel_offline(self, user_id: str) -> None:
+        task = self._offline_tasks.pop(user_id, None)
+        if task is not None:
+            task.cancel()
+
+    def defer_offline(self, user_id: str, callback, grace_seconds: float | None = None) -> None:
+        self.cancel_offline(user_id)
+
+        async def mark_offline_after_grace() -> None:
+            try:
+                await asyncio.sleep(self.offline_grace_seconds if grace_seconds is None else grace_seconds)
+                if not self.is_online(user_id):
+                    await callback()
+            finally:
+                self._offline_tasks.pop(user_id, None)
+
+        self._offline_tasks[user_id] = asyncio.create_task(mark_offline_after_grace())
+
+    async def cancel_background_tasks(self) -> None:
+        tasks = list(self._offline_tasks.values())
+        self._offline_tasks.clear()
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def touch(self, websocket: WebSocket, now: float | None = None) -> None:
         self._last_activity[websocket] = monotonic() if now is None else now

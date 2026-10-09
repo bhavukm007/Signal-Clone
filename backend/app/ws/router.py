@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from app.db.session import SessionLocal
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -84,6 +85,10 @@ async def websocket_endpoint(
     try:
         if first_socket:
             online_user = presence_service.set_online(db, user.id, True)
+            await websocket.send_json({
+                'type': 'presence.snapshot',
+                'payload': {'users': presence_service.snapshot(db, user.id)},
+            })
             await realtime_service.presence_changed(
                 db, user.id, True, online_user.last_seen_at if online_user else None
             )
@@ -125,11 +130,15 @@ async def websocket_endpoint(
     finally:
         last_socket = manager.disconnect(user.id, websocket)
         if last_socket:
-            try:
-                offline_user = presence_service.set_online(db, user.id, False)
-                await realtime_service.presence_changed(
-                    db, user.id, False, offline_user.last_seen_at if offline_user else None
-                )
-            except Exception:
-                from app.core.logging import logger
-                logger.exception('Failed to publish websocket offline transition')
+            async def publish_offline() -> None:
+                try:
+                    with SessionLocal() as offline_db:
+                        offline_user = presence_service.set_online(offline_db, user.id, False)
+                        await realtime_service.presence_changed(
+                            offline_db, user.id, False,
+                            offline_user.last_seen_at if offline_user else None,
+                        )
+                except Exception:
+                    from app.core.logging import logger
+                    logger.exception('Failed to publish websocket offline transition')
+            manager.defer_offline(user.id, publish_offline)

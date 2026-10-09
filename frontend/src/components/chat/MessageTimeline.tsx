@@ -141,8 +141,9 @@ export function MessageTimeline({
                     <time title={fullTime(message.created_at)}>{fullTime(message.created_at)}</time>
                     {!incoming && (
                       <span
-                        className={`ticks ${message.status === 'read' ? 'read' : ''}`}
-                        aria-label={`Message ${message.status}`}
+                        className={`ticks status-${message.status}`}
+                        aria-label={`${message.status === 'sending' ? 'Sending' : message.status === 'sent' ? 'Sent' : message.status === 'delivered' ? 'Delivered' : 'Read'}`}
+                        title={`${message.status === 'sending' ? 'Sending' : message.status === 'sent' ? 'Sent' : message.status === 'delivered' ? 'Delivered' : 'Read'}`}
                       >
                         {message.status === 'sending' ? (
                           <Clock3 size={13} />

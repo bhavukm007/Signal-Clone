@@ -1,8 +1,10 @@
 .chat-view {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
 }
 .chat-header {
   height: 64px;
@@ -79,8 +81,11 @@
 }
 .message-list {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px clamp(18px, 7vw, 110px);
   scroll-behavior: smooth;
 }
@@ -99,6 +104,7 @@
   position: relative;
   width: fit-content;
   max-width: 75%;
+  min-width: 0;
   margin: 4px 0 10px;
   align-items: flex-end;
   touch-action: pan-y;
@@ -150,6 +156,8 @@
   overflow-wrap: anywhere;
   font-size: 15px;
   min-width: 72px;
+  max-width: 100%;
+  min-width: 0;
 }
 .outgoing .bubble {
   background: var(--signal-outgoing);
@@ -179,8 +187,14 @@
   align-items: center;
   padding-right: 2px;
 }
-.ticks.read {
+.ticks.status-delivered {
+  color: #d2ddec;
+}
+.ticks.status-read {
   color: #80b9ff;
+}
+.ticks.status-sending {
+  opacity: 0.65;
 }
 .system-message {
   text-align: center;
@@ -208,6 +222,14 @@
 }
 .reaction-action {
   right: -66px;
+}
+.outgoing .reply-action {
+  right: auto;
+  left: -34px;
+}
+.outgoing .reaction-action {
+  right: auto;
+  left: -66px;
 }
 .incoming .reply-action {
   right: -34px;

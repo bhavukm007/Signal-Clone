@@ -45,6 +45,7 @@ export function ChatView() {
     (s) => s.typingByConversation[conversationId] ?? EMPTY_TYPING_LIST,
   );
   const presence = usePresenceStore((s) => s.onlineUserIds);
+  const lastSeenAtByUser = usePresenceStore((s) => s.lastSeenAtByUser);
   const [draft, setDraft] = useState('');
   const [reply, setReply] = useState<string | null>(null);
   const [showLatest, setShowLatest] = useState(false);
@@ -114,7 +115,8 @@ export function ChatView() {
       <ChatHeader
         title={title}
         peer={peer}
-        online={peer ? (presence[peer.id] ?? false) : false}
+        online={peer ? (presence[peer.id] ?? peer.is_online) : false}
+        lastSeenAt={peer ? (lastSeenAtByUser[peer.id] ?? peer.last_seen_at) : undefined}
         conversationType={conversation.type}
         memberCount={participants.length}
         onBack={() => {

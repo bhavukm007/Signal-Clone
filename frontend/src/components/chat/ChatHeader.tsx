@@ -10,6 +10,7 @@ export function ChatHeader({
   title,
   peer,
   online,
+  lastSeenAt,
   conversationType,
   memberCount,
   onBack,
@@ -18,6 +19,7 @@ export function ChatHeader({
   title: string;
   peer?: User;
   online: boolean;
+  lastSeenAt?: string | null;
   conversationType: 'direct' | 'group';
   memberCount: number;
   onBack: () => void;
@@ -46,8 +48,8 @@ export function ChatHeader({
               ? `${memberCount} members`
               : online
                 ? 'online'
-                : peer?.last_seen_at
-                  ? `last seen ${lastSeenTime(peer.last_seen_at)}`
+                : lastSeenAt
+                  ? `last seen ${lastSeenTime(lastSeenAt)}`
                   : 'offline'}
           </small>
         </span>

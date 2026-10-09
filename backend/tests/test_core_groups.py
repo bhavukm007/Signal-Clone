@@ -84,7 +84,9 @@ def test_group_changes_broadcast_system_message_and_update(client: TestClient) -
     }).json()
 
     with client.websocket_connect(f"/ws?token={admin['token']}") as admin_socket:
+        assert admin_socket.receive_json()['type'] == 'presence.snapshot'
         with client.websocket_connect(f"/ws?token={member['token']}") as member_socket:
+            assert member_socket.receive_json()['type'] == 'presence.snapshot'
             admin_presence = admin_socket.receive_json()
             assert admin_presence['type'] == 'presence'
             pending_status = admin_socket.receive_json()

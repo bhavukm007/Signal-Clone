@@ -64,9 +64,21 @@ function applyEvent(frame: WsFrame, queryClient: ReturnType<typeof useQueryClien
         }, 5000),
       );
     } else typingExpiry.delete(key);
+  } else if (frame.type === 'presence.snapshot') {
+    const snapshot = payload as {
+      users: Array<{ user_id: string; is_online: boolean; last_seen_at?: string | null }>;
+    };
+    usePresenceStore.getState().setSnapshot(snapshot.users);
+    void queryClient.invalidateQueries({ queryKey: ['conversations'] });
   } else if (frame.type === 'presence') {
-    const presence = payload as { user_id: string; is_online: boolean };
-    usePresenceStore.getState().setPresence(presence.user_id, presence.is_online);
+    const presence = payload as {
+      user_id: string;
+      is_online: boolean;
+      last_seen_at?: string | null;
+    };
+    usePresenceStore
+      .getState()
+      .setPresence(presence.user_id, presence.is_online, presence.last_seen_at);
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });
   } else if (frame.type === 'conversation.updated') {
     void queryClient.invalidateQueries({ queryKey: ['conversations'] });

@@ -5,6 +5,7 @@ from app.db.base import utc_now
 from app.models.contact import Contact
 from app.models.conversation import Participant
 from app.models.user import User
+from app.core.datetime import utc_iso
 from app.repositories.contact_repository import is_blocked
 
 
@@ -35,3 +36,13 @@ def relevant_user_ids(db: Session, user_id: str) -> set[str]:
         candidate for candidate in candidates
         if not is_blocked(db, candidate, user_id) and not is_blocked(db, user_id, candidate)
     }
+
+
+def snapshot(db: Session, user_id: str) -> list[dict[str, object]]:
+    ids = relevant_user_ids(db, user_id)
+    users = db.scalars(select(User).where(User.id.in_(ids))).all() if ids else []
+    return [
+        {'user_id': user.id, 'is_online': user.is_online,
+         'last_seen_at': utc_iso(user.last_seen_at) if user.last_seen_at else None}
+        for user in users
+    ]

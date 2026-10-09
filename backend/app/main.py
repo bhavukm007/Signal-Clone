@@ -39,6 +39,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         for worker in workers:
             worker.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
+        await manager.cancel_background_tasks()
 
 
 async def expiration_loop() -> None:
