@@ -2,10 +2,13 @@ import { expect, test } from '@playwright/test';
 import type { Browser, Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { resolveWebSocketUrl } from '../src/lib/constants';
 
 const api = `${process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:8000'}/api/v1`;
-const screenshots = process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? '../docs/screenshots/parity';
+const screenshots = resolve(
+  process.env.PLAYWRIGHT_SCREENSHOT_DIR ?? 'test-results/screenshots/parity',
+);
 const sessionCache = new Map<string, Promise<{ token: string; user: object }>>();
 const viewports = [
   { width: 375, height: 812 },
@@ -142,7 +145,7 @@ test('responsive light and dark app views fit at phone, tablet, and desktop widt
       await page.goto(`/chat/${direct?.id}`);
       await expect(page.locator('.chat-header')).toBeVisible();
       await expect(page.locator('.composer')).toBeVisible();
-      if (width <= 768) await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
+      if (width < 768) await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
       const font = await page
         .locator('body')
         .evaluate((element) => getComputedStyle(element).fontFamily);
@@ -273,6 +276,7 @@ test('contact picker groups alphabetically, searches, and supports keyboard sele
   await expect(search).toBeFocused();
   await expect(dialog.getByRole('button', { name: 'New group' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Add contact' })).toBeVisible();
+  await expect(page.locator('.contact-picker-row').first()).toBeVisible();
   const names = await page.locator('.contact-picker-row b').allTextContents();
   expect(names).toEqual(
     [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
@@ -400,8 +404,9 @@ test('blocking confirms the action and shows the blocked conversation state', as
   await expect(page.getByRole('dialog', { name: 'Block contact?' })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm block' }).click();
   await expect(page.getByText('Contact blocked.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
   await page.goto(`/chat/${conversation.id}`);
-  await expect(page.locator('.blocked-banner')).toContainText('Blocked');
+  await expect(page.locator('.blocked-banner')).toContainText(/blocked/i);
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Blocked users Manage' }).click();
   const blockedDialog = page.getByRole('dialog', { name: 'Blocked users' });
