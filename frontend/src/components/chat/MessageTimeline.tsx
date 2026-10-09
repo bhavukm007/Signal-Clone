@@ -97,7 +97,11 @@ export function MessageTimeline({
                     )}
                   </footer>
                 </div>
-                <button className="reply-action" aria-label="Reply" onClick={() => onReply(message.id)}>
+                <button
+                  className="reply-action"
+                  aria-label="Reply"
+                  onClick={() => onReply(message.id)}
+                >
                   ↩
                 </button>
                 <button

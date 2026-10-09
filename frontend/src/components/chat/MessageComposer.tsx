@@ -43,7 +43,10 @@ export function MessageComposer({
           {attachments.map((item) => (
             <span key={item.id}>
               📎 {item.file_name}
-              <button aria-label={`Remove ${item.file_name}`} onClick={() => onRemoveAttachment(item.id)}>
+              <button
+                aria-label={`Remove ${item.file_name}`}
+                onClick={() => onRemoveAttachment(item.id)}
+              >
                 ×
               </button>
             </span>

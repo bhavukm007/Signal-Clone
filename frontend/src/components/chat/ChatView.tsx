@@ -1,15 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  Phone,
-  Video,
-  MoreVertical,
-  Search,
-  ShieldCheck,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, Phone, Video, MoreVertical, Search, ShieldCheck, X } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -258,7 +250,9 @@ export function ChatView() {
         onTyping={typing}
         onSubmit={submit}
         blocked={blocked}
-        replyText={reply === null ? undefined : messages.find((item) => item.id === reply)?.body || ''}
+        replyText={
+          reply === null ? undefined : messages.find((item) => item.id === reply)?.body || ''
+        }
         onClearReply={() => setReply(null)}
         attachments={pendingAttachments}
         onRemoveAttachment={(id) =>
