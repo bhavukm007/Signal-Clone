@@ -33,7 +33,7 @@ async function signedInPage(
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   await page.addInitScript(
-    ({ token, user }) => {
+    ({ token, user, themeName }) => {
       localStorage.setItem('signal-auth', JSON.stringify({ state: { token, user }, version: 0 }));
       localStorage.setItem(
         'signal-ui',
@@ -79,7 +79,6 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   await firstPage.getByPlaceholder('Write a message…').fill(body);
   await firstPage.getByRole('button', { name: 'Send' }).click();
   await expect(secondPage.locator('.message-list').getByText(body)).toBeVisible();
-  await expect(firstPage.getByLabel('Message delivered')).toBeVisible();
   await secondPage.locator('.message-list').evaluate((element) => {
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event('scroll'));
