@@ -184,16 +184,19 @@ a {
   font-size: 11px;
 }
 .compose-fab {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  width: 52px;
-  height: 52px;
+  display: none;
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   background: var(--signal-blue);
   color: white;
   box-shadow: 0 3px 12px #0002;
+  place-items: center;
 }
 .app-main {
   flex: 1;

@@ -64,6 +64,18 @@
     display: none;
   }
 }
+
+@media (max-width: 767px) {
+  .sidebar-header > .icon-button[aria-label='New chat'] {
+    display: none;
+  }
+  .compose-fab {
+    display: grid;
+  }
+  .conversation-list {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
 .scroll-latest {
   align-self: flex-end;
   display: block;
