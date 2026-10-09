@@ -34,7 +34,7 @@ test('onboarding retries a transient cold-start response and explains the wait',
       });
       return;
     }
-    await route.continue();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
 
   await page.goto('/welcome');
