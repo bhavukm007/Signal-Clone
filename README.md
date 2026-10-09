@@ -6,7 +6,9 @@ A full-stack desktop-style messaging demo built with Next.js, FastAPI, SQLAlchem
 
 ## Demo accounts
 
-Sign in as `+91 90000 00001` or `+91 90000 00002` and enter the fixed OTP `123456`. Use a second browser profile for the other account. The app seeds ten realistic users and sample conversations the first time an empty database starts.
+Sign in as `+919000000001` or `+919000000002` and enter the fixed OTP `123456`. Use a second browser profile for the other account. The app seeds ten realistic users and sample conversations the first time an empty database starts.
+
+Phone identifiers are normalized to E.164 before account lookup or creation. The input accepts `+919000000001`, `+91 90000 00001`, `+91-90000-00001`, `919000000001`, or a 10-digit Indian national number; each resolves to the same account.
 
 ## Technology choices
 
@@ -19,7 +21,7 @@ Sign in as `+91 90000 00001` or `+91 90000 00002` and enter the fixed OTP `12345
 
 ## Local setup
 
-Requirements: Python 3.11, Node.js 20.19+, and npm. In PowerShell, confirm the Python launcher sees 3.11 with `py -3.11 --version` before creating the virtual environment.
+Requirements: Python 3.11, Node.js 22 LTS, and npm 10+. In PowerShell, check `py -3.11 --version` and `node --version` (the latter should report v22.x) before setup.
 
 ### Backend
 
@@ -30,10 +32,10 @@ py -3.11 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
-uvicorn app.main:app --reload --env-file .env
+python -m uvicorn app.main:app --reload --env-file .env
 ```
 
-At startup the backend creates the schema from the SQLAlchemy models and seeds an empty database. Local defaults are `sqlite:///./signal.db`, `uploads/`, `OTP_CODE=123456`, and CORS origin `http://localhost:3000`. API docs are at [http://localhost:8000/docs](http://localhost:8000/docs); health is at [http://localhost:8000/health](http://localhost:8000/health).
+At startup the backend creates the schema from the SQLAlchemy models and seeds an empty database. Local defaults are `sqlite:///./signal.db`, `uploads/`, `OTP_CODE=123456`, and CORS origin `http://localhost:3000`. Phone numbers are normalized on the backend and stored in canonical E.164 form. API docs are at [http://localhost:8000/docs](http://localhost:8000/docs); health is at [http://localhost:8000/health](http://localhost:8000/health).
 
 ### Frontend
 
@@ -43,6 +45,8 @@ In a second terminal:
 cd frontend
 Copy-Item .env.example .env.local
 npm ci
+$env:NEXT_PUBLIC_API_URL = 'http://localhost:8000/api/v1'
+$env:NEXT_PUBLIC_WS_URL = 'ws://localhost:8000/ws'
 npm run dev
 ```
 
@@ -63,6 +67,8 @@ Open [http://localhost:3000](http://localhost:3000). The example frontend URLs t
 | `NEXT_PUBLIC_WS_URL` | Frontend | WebSocket endpoint; use `wss://` in production |
 
 ## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module map, full schema constraints, REST/WS contract, auth and message lifecycles, and deployment limitations.
 
 ```mermaid
 flowchart LR
@@ -231,7 +237,7 @@ Prefix: `/api/v1`. Routes require `Authorization: Bearer <token>` except OTP req
 | Conversations | `GET /conversations?q=`, `POST /conversations/direct`, `GET /conversations/{id}`, `POST /conversations/{id}/read`, `PATCH /conversations/{id}` |
 | Messages | `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `DELETE /messages/{id}`, `PUT /messages/{id}/reaction`, `DELETE /messages/{id}/reaction` |
 | Groups | `POST /groups`, `GET /groups/{id}/members`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `PATCH /groups/{id}/members/{user_id}/role`, `PATCH /groups/{id}` |
-| Uploads/media/system | `POST /uploads`, authenticated `GET /media/attachments/{id}`, authenticated `GET /media/avatars/{user_id}`, `GET /health` (outside the API prefix), interactive `/docs` |
+| Uploads/media/system | `POST /uploads`, authenticated `GET /media/attachments/{id}`, `GET /media/conversations/{id}/attachments`, authenticated `GET /media/avatars/{user_id}`, `GET /health` (outside the API prefix), interactive `/docs` |
 
 Cursor history is returned oldest-to-newest within each page; the UI requests older pages using the first message ID as `before`. Group membership and role checks happen in backend services, not only in the UI.
 
@@ -251,12 +257,12 @@ Connect to `/ws?token=<bearer-token>`. Each frame has `{ "type": "event.name", "
 | Client → server | `ping` | Keep the connection alive; server answers `pong` |
 | Server → client | `message.new`, `message.ack` | Deliver message and acknowledge sender's client ID |
 | Server → client | `message.status` | Per-recipient and aggregate delivery/read update |
-| Server → client | `typing`, `presence` | Typing state and online/last-seen changes |
+| Server → client | `typing`, `presence.snapshot`, `presence` | Typing state, initial online-state snapshot, and live online/last-seen changes |
 | Server → client | `conversation.updated` | `{conversation_id}`; clients invalidate and reload group metadata |
 | Server → client | `reaction.updated`, `message.deleted` | Refresh message reactions or remove expired/deleted message |
 | Server → client | `error`, `pong` | Report invalid event or answer heartbeat |
 
-The connection manager supports multiple sockets per user. First connect marks online and delivers pending receipts; cleanup in `finally` records `last_seen_at` when the final socket exits. A 75-second heartbeat timeout drops stale sockets; the browser pings every 25 seconds, reconnects with exponential backoff, and invalidates REST queries to resync. Expired/revoked WebSocket credentials clear the client session instead of retrying forever.
+The connection manager supports multiple sockets per user. First connect sends a presence snapshot, marks online and delivers pending receipts; the final disconnect is held for a five-second reconnect grace before broadcasting last-seen. A 75-second heartbeat timeout drops stale sockets; the browser pings every 25 seconds, reconnects with exponential backoff, and invalidates REST queries to resync. Expired/revoked WebSocket credentials clear the client session instead of retrying forever.
 
 ### Message status state machine
 
@@ -300,8 +306,10 @@ Backend tests use an in-memory SQLite database with `StaticPool`, dependency ove
 
 ```powershell
 cd backend
-python -m pytest -x -q
+py -3.11 -m pytest -x -q
 ```
+
+On restricted Windows runners, Starlette `TestClient` may stall before test setup while Python opens the local asyncio socketpair. Run pytest on the normal host runner (or allow local loopback sockets) and keep `pytest-timeout` enabled; this is an execution-environment limit, not an application startup task.
 
 Frontend checks:
 
@@ -311,8 +319,11 @@ npm ci
 npm run format:check
 npm run lint
 npm run typecheck
+npm run test:unit
 npm run build
 ```
+
+For browser integration tests, start the backend and frontend, then run `npm run test:e2e` from `frontend/`. Playwright traces, screenshots and reports are written under the ignored `frontend/test-results/` and `frontend/playwright-report/` directories.
 
 The live local smoke script exercises both demo accounts over HTTP and WebSockets. Start the backend first, then run `python scripts/smoke_e2e.py`. For post-restart checks, use `--verify-conversation`, `--verify-message`, and `--verify-group` with the IDs printed by the first run. GitHub Actions runs backend pytest and frontend install, formatting, lint, typecheck, and build on pushes and pull requests.
 

@@ -1,6 +1,6 @@
 # Deploy the demo to Render and Vercel
 
-This guide configures the Render API first, then the Vercel frontend, then updates backend CORS with the deployed Vercel origin. The repository already contains `render.yaml` and `frontend/vercel.json`. These instructions describe dashboard actions only; no service or account is created by following the local verification workflow.
+This guide configures the Render API first, then the Vercel frontend, then updates backend CORS with the deployed Vercel origin. The repository contains `render.yaml`, a root `vercel.json` framework hint, and `frontend/vercel.json` for a Vercel project whose Root Directory is `frontend`. These instructions describe dashboard actions only; no service or account is created by following the local verification workflow.
 
 The Render Free web service sleeps after 15 minutes without traffic and can take about a minute to start. Its filesystem is ephemeral: SQLite data and uploads are lost on sleep, restart, or redeploy. Startup recreates the database schema and demo seed. Persistent disks are available only on paid service plans. See [Render Free services](https://render.com/docs/free), [Render Blueprints](https://render.com/docs/blueprint-spec), and [Vercel project settings](https://vercel.com/docs/project-configuration/project-settings).
 
@@ -50,7 +50,7 @@ The Render Free web service sleeps after 15 minutes without traffic and can take
 3. Replace `CORS_ORIGINS` with the exact Vercel production origin, including `https://` and with no path or trailing slash. For example: `https://signal-clone.vercel.app`.
 4. If a Vercel preview domain also needs API access, add each exact origin as a comma-separated value. Do not use `*` for this credentialed API.
 5. Choose **Save, rebuild, and deploy** (or the equivalent save-and-redeploy action shown by Render). Wait for `/health` to return `{"status":"ok"}` again.
-6. Open the Vercel site, choose **Get started**, and sign in with `+91 90000 00001` or `+91 90000 00002`; the public demo code is `123456`. Open a second browser profile to try two-account messaging.
+6. Open the Vercel site, choose **Get started**, and sign in with `+919000000001` or `+919000000002`; the public demo code is `123456`. Open a second browser profile to try two-account messaging.
 
 ## Environment variable reference
 

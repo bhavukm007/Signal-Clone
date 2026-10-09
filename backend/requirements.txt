@@ -3,7 +3,6 @@ uvicorn[standard]==0.35.0
 sqlalchemy==2.0.41
 pydantic==2.11.7
 python-multipart==0.0.20
-python-jose[cryptography]==3.5.0
 pytest==8.4.1
 httpx==0.28.1
 pytest-timeout==2.4.0
