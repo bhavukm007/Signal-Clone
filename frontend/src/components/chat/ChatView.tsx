@@ -59,6 +59,7 @@ export function ChatView() {
   const priorHeight = useRef<number | null>(null);
   const typing = useTyping(sendEvent, conversationId);
   useEffect(() => {
+    if (conversationLoading || loading) return;
     const box = scroll.current;
     if (!box) return;
     if (priorHeight.current !== null) {
@@ -69,7 +70,7 @@ export function ChatView() {
       firstPage.current = false;
       setShowLatest(false);
     }
-  }, [messages.length]);
+  }, [messages.length, conversationLoading, loading]);
   const onScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
       const box = event.currentTarget;
@@ -175,6 +176,7 @@ export function ChatView() {
           messages={visibleMessages}
           conversationType={conversation.type}
           currentUserId={user?.id}
+          participants={conversation.participants.map(({ user: participant }) => participant)}
           onReply={setReply}
           onReact={react}
           onRemoveReaction={removeReaction}

@@ -1,8 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Paperclip, Send, Smile } from 'lucide-react';
 import type { Attachment } from '@/types/models';
+
+const EmojiPicker = dynamic(() => import('@/components/chat/EmojiPicker'), {
+  ssr: false,
+  loading: () => (
+    <div className="emoji-picker-loading" role="status">
+      Loading emoji…
+    </div>
+  ),
+});
 
 interface MessageComposerProps {
   draft: string;
@@ -30,6 +40,19 @@ export function MessageComposer({
   onUpload,
 }: MessageComposerProps) {
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const input = useRef<HTMLTextAreaElement>(null);
+
+  function insertEmoji(emoji: string) {
+    const field = input.current;
+    const start = field?.selectionStart ?? draft.length;
+    const end = field?.selectionEnd ?? start;
+    onDraftChange(`${draft.slice(0, start)}${emoji}${draft.slice(end)}`);
+    setEmojiOpen(false);
+    requestAnimationFrame(() => {
+      field?.focus();
+      field?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
+  }
   return (
     <div className="composer-wrap">
       {replyText !== undefined && (
@@ -62,23 +85,10 @@ export function MessageComposer({
           >
             <Smile />
           </button>
-          {emojiOpen && (
-            <div className="emoji-popover">
-              {['😀', '😂', '❤️', '👍', '🎉', '🙏', '🙂', '🔥'].map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => {
-                    onDraftChange(`${draft}${emoji}`);
-                    setEmojiOpen(false);
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
+          {emojiOpen && <EmojiPicker className="emoji-picker-in-composer" onSelect={insertEmoji} />}
         </div>
         <textarea
+          ref={input}
           value={draft}
           placeholder="Write a message…"
           rows={1}

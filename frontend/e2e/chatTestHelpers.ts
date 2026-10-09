@@ -6,14 +6,46 @@ import {
   type WebSocket,
 } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export const api = `${process.env.PLAYWRIGHT_API_URL ?? 'http://127.0.0.1:8000'}/api/v1`;
+type TestSession = {
+  token: string;
+  user: { id: string; display_name: string; last_seen_at: string };
+};
+const sessions = new Map<string, TestSession>();
+const sessionCachePath = join(
+  tmpdir(),
+  `signal-playwright-sessions-${Buffer.from(api).toString('hex').slice(0, 24)}.json`,
+);
 
 export function phone() {
   return `+91 7${randomUUID().replace(/\D/g, '').padEnd(9, '0').slice(0, 9)}`;
 }
 
-export async function login(identifier: string) {
+export async function login(identifier: string): Promise<TestSession> {
+  let cached = sessions.get(identifier);
+  if (!cached) {
+    try {
+      const persisted = JSON.parse(await readFile(sessionCachePath, 'utf8')) as Record<
+        string,
+        TestSession
+      >;
+      cached = persisted[identifier];
+      if (cached) sessions.set(identifier, cached);
+    } catch {
+      // A missing cache is expected for a fresh test run or backend database.
+    }
+  }
+  if (cached) {
+    const validation = await fetch(`${api}/auth/me`, {
+      headers: { Authorization: `Bearer ${cached.token}` },
+    });
+    if (validation.ok) return cached;
+    sessions.delete(identifier);
+  }
   const request = async (path: string, body: object) => {
     const response = await fetch(`${api}/auth/${path}`, {
       method: 'POST',
@@ -37,6 +69,15 @@ export async function login(identifier: string) {
     if (!response.ok) throw new Error(`Profile setup failed: ${response.status}`);
     session.user = await response.json();
   }
+  sessions.set(identifier, session);
+  let persisted: Record<string, TestSession> = {};
+  try {
+    persisted = JSON.parse(await readFile(sessionCachePath, 'utf8')) as Record<string, TestSession>;
+  } catch {
+    // Create the cache on first login.
+  }
+  persisted[identifier] = session;
+  await writeFile(sessionCachePath, JSON.stringify(persisted), 'utf8');
   return session;
 }
 

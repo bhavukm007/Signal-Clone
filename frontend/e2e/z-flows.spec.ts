@@ -104,7 +104,11 @@ test('group receipts, reactions, replies, uploads, search, timer, and shortcuts 
   await expect(firstPage.getByLabel('Read')).toBeVisible({ timeout: 10000 });
 
   const firstMessage = firstPage.locator('.message-row').filter({ hasText: body });
-  await firstMessage.getByRole('button', { name: 'React with heart' }).click();
+  await firstMessage.getByRole('button', { name: 'React' }).click();
+  await firstPage
+    .getByRole('toolbar', { name: 'Quick reactions' })
+    .getByRole('button', { name: 'React with emoji ❤️' })
+    .click();
   await expect(firstMessage.locator('.reaction-chip')).toContainText('❤️');
   await firstMessage.getByRole('button', { name: 'Reply' }).click();
   await expect(firstPage.locator('.reply-preview')).toContainText(body);

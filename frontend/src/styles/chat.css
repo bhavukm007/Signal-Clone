@@ -87,7 +87,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px clamp(18px, 7vw, 110px);
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 .date-divider {
   text-align: center;
@@ -103,19 +103,20 @@
   display: flex;
   position: relative;
   width: fit-content;
-  max-width: 75%;
+  max-width: min(100%, calc(75% + 112px));
   min-width: 0;
   margin: 4px 0 10px;
   align-items: flex-end;
+  padding-right: 112px;
   touch-action: pan-y;
 }
 .message-context-menu {
-  position: absolute;
-  z-index: 10;
-  bottom: calc(100% + 8px);
-  left: 0;
+  position: fixed;
+  z-index: 120;
   display: grid;
-  min-width: 164px;
+  width: min(252px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
   padding: 5px;
   border: 1px solid var(--signal-divider);
   border-radius: 12px;
@@ -144,6 +145,8 @@
 .message-row.outgoing {
   margin-left: auto;
   flex-direction: row-reverse;
+  padding-right: 0;
+  padding-left: 112px;
 }
 .message-row.grouped {
   margin-top: 2px;
@@ -202,47 +205,122 @@
   font-size: 12px;
   margin: 12px;
 }
-.reply-action,
-.reaction-action {
+.message-actions {
   position: absolute;
-  top: 50%;
-  opacity: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--signal-search);
-  width: 28px;
-  height: 28px;
+  z-index: 8;
+  top: 2px;
+  right: 0;
+  display: flex;
+  gap: 5px;
+  /* Keep the hover target hit-testable: Playwright and real pointer input need
+     to enter the action gutter before :hover can reveal the controls. */
+  opacity: 0.01;
+  pointer-events: auto;
+  transition: opacity 120ms ease-out;
 }
-.message-row:hover .reply-action,
-.message-row:hover .reaction-action {
+.message-row:hover .message-actions,
+.message-row:focus-within .message-actions {
+  z-index: 8;
   opacity: 1;
 }
-.reply-action {
-  right: -34px;
+.message-row:hover,
+.message-row:focus-within {
+  z-index: 7;
 }
-.reaction-action {
-  right: -66px;
+.message-action {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--signal-divider);
+  border-radius: 50%;
+  background: var(--signal-app);
+  color: var(--signal-muted);
+  box-shadow: 0 2px 8px #0002;
 }
-.outgoing .reply-action {
+.message-action:hover,
+.message-action:focus-visible {
+  background: var(--signal-selected);
+  color: var(--signal-blue);
+}
+.outgoing .message-actions {
   right: auto;
-  left: -34px;
+  left: 0;
 }
-.outgoing .reaction-action {
-  right: auto;
-  left: -66px;
+.reaction-bar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  gap: 3px;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  padding: 5px;
+  border: 1px solid var(--signal-divider);
+  border-radius: 24px;
+  background: var(--signal-app);
+  box-shadow: 0 5px 20px #0003;
 }
-.incoming .reply-action {
-  right: -34px;
+.reaction-bar button {
+  display: grid;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 20px;
+}
+.reaction-bar button:hover,
+.reaction-bar button:focus-visible {
+  background: var(--signal-selected);
+  transform: none;
+}
+.reaction-bar.in-menu {
+  position: sticky;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 2px;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.reaction-bar.in-menu button {
+  width: 30px;
+  min-width: 30px;
+  height: 34px;
 }
 .reaction-chip {
-  position: absolute;
-  bottom: -12px;
-  right: 8px;
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
   background: var(--signal-app);
   border: 1px solid var(--signal-divider);
   border-radius: 14px;
   padding: 2px 7px;
   font-size: 12px;
+  color: var(--signal-text);
+}
+.reaction-chip.is-own {
+  border-color: var(--signal-blue);
+  background: var(--signal-selected);
+}
+.reaction-pills {
+  position: absolute;
+  right: 4px;
+  bottom: -16px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  max-width: calc(100vw - 24px);
+}
+.long-pressing .bubble {
+  transform: scale(0.98);
+  filter: brightness(0.94);
 }
 .typing-indicator {
   display: flex;
