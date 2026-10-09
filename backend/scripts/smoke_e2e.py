@@ -32,7 +32,13 @@ async def next_frame(
             return frame
 
 
-async def check_websockets(base_url: str, first_token: str, second_token: str, conversation_id: str) -> str:
+async def check_websockets(
+    base_url: str,
+    first_token: str,
+    second_token: str,
+    conversation_id: str,
+    attachment_id: str,
+) -> str:
     ws_url = base_url.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws?token='
     async with connect(ws_url + first_token) as first, connect(ws_url + second_token) as second:
         await first.send(json.dumps({'type': 'typing.start', 'payload': {'conversation_id': conversation_id}}))
@@ -41,15 +47,18 @@ async def check_websockets(base_url: str, first_token: str, second_token: str, c
         await next_frame(second, 'typing', lambda item: item['payload'].get('is_typing') is False)
 
         sent_ids: list[str] = []
-        for sender, recipient in ((first, second), (second, first)):
+        for number, (sender, recipient) in enumerate(((first, second), (second, first))):
             client_id = str(uuid.uuid4())
             await sender.send(json.dumps({'type': 'message.send', 'payload': {
                 'conversation_id': conversation_id,
                 'body': f'Automated realtime smoke {client_id[:8]}',
                 'client_message_id': client_id,
+                'attachment_ids': [attachment_id] if number == 0 else [],
             }}))
             delivery = await next_frame(recipient, 'message.new')
             message = delivery['payload']['message']
+            if number == 0:
+                assert message['attachments'][0]['id'] == attachment_id
             message_id = str(message['id'])
             sent_ids.append(message_id)
             await next_frame(sender, 'message.ack', lambda item: item['payload'].get('client_message_id') == client_id)
@@ -92,6 +101,14 @@ def main() -> None:
         direct.raise_for_status()
         conversation_id = direct.json()['id']
 
+        upload = client.post(
+            '/api/v1/uploads',
+            headers=headers,
+            files={'file': ('production-smoke.txt', b'production upload check', 'text/plain')},
+        )
+        upload.raise_for_status()
+        attachment_id = str(upload.json()['id'])
+
         group = client.post('/api/v1/groups', headers=headers, json={
             'name': f"Smoke group {uuid.uuid4().hex[:6]}", 'member_ids': [second_user['id']],
         })
@@ -105,7 +122,11 @@ def main() -> None:
         assert denied.status_code == 403, denied.text
 
     last_message_id = asyncio.run(check_websockets(
-        args.base_url, str(first['token']), str(second['token']), str(conversation_id),
+        args.base_url,
+        str(first['token']),
+        str(second['token']),
+        str(conversation_id),
+        attachment_id,
     ))
     print(json.dumps({
         'status': 'passed',
@@ -113,7 +134,7 @@ def main() -> None:
         'group_id': group_id,
         'last_message_id': last_message_id,
         'accounts': ['+91 90000 00001', '+91 90000 00002'],
-        'checks': ['auth', 'direct chat', 'group creation', 'admin denial', 'typing', 'both-way messages', 'delivery and read receipts'],
+        'checks': ['auth', 'direct chat', 'upload and attachment delivery', 'group creation', 'admin denial', 'typing', 'both-way messages', 'delivery and read receipts'],
     }, indent=2))
 
 
