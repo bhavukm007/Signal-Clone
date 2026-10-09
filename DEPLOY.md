@@ -1,66 +1,99 @@
-# Beginner deployment guide
+# Deploy the demo to Render and Vercel
 
-This repository deploys as a Render API service and a Vercel Next.js site. The Render Blueprint creates a persistent disk for SQLite and uploads. Keep the backend to one running instance because WebSocket connections are held in memory.
+This guide configures the Render API first, then the Vercel frontend, then updates backend CORS with the deployed Vercel origin. The repository already contains `render.yaml` and `frontend/vercel.json`. These instructions describe dashboard actions only; no service or account is created by following the local verification workflow.
 
-## 1. Put the project on GitHub
+The Render Free web service sleeps after 15 minutes without traffic and can take about a minute to start. Its filesystem is ephemeral: SQLite data and uploads are lost on sleep, restart, or redeploy. Startup recreates the database schema and demo seed. Persistent disks are available only on paid service plans. See [Render Free services](https://render.com/docs/free), [Render Blueprints](https://render.com/docs/blueprint-spec), and [Vercel project settings](https://vercel.com/docs/project-configuration/project-settings).
 
-1. Sign in to GitHub and create a new repository for this project.
-2. In a terminal opened at the project folder, run `git remote add origin https://github.com/YOUR-NAME/YOUR-REPOSITORY.git`.
-3. Push the current branch with `git push -u origin main`.
-4. Confirm that `render.yaml`, `frontend/`, and `backend/` appear in the GitHub repository root.
+## 1. Deploy the backend on Render
 
-## 2. Create the backend on Render
+1. Sign in to [Render](https://dashboard.render.com).
+2. From the dashboard, choose **New + → Blueprint**.
+3. Select the repository that contains this project and choose the branch to deploy. Confirm that the Blueprint file is the repository-root `render.yaml`.
+4. Choose **Apply**. Render reads `rootDir: backend`, installs `backend/requirements.txt`, and starts `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. The health check path is `/health`.
+5. If Render asks for unsynced environment values while creating the service, enter these values. Use `https://pending.invalid` temporarily for CORS; replace it after the frontend is deployed.
 
-1. Sign in at [Render](https://render.com) and connect your GitHub account if prompted.
-2. Open **Dashboard → New + → Blueprint**.
-3. Select the GitHub repository and click **Apply**. Render reads `render.yaml` and creates the `signal-clone-api` Docker web service and its `/data` disk.
-4. Open the new service and wait for the first deploy to finish. The Docker command runs `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-5. Copy the service URL from the service header. It will look like `https://signal-clone-api.onrender.com`.
-6. Check `https://YOUR-RENDER-SERVICE.onrender.com/health`. It should return `{"status":"ok"}`. API documentation is at `/docs`.
-7. In **Environment**, verify these values are present:
+   | Backend variable | Initial value |
+   |---|---|
+   | `ENVIRONMENT` | `production` |
+   | `DATABASE_URL` | `sqlite:///./signal.db` |
+   | `CORS_ORIGINS` | `https://pending.invalid` |
+   | `JWT_SECRET` | A new random 64-character hex value; generate one with `python -c "import secrets; print(secrets.token_hex(32))"` |
+   | `OTP_CODE` | `123456` |
+   | `UPLOAD_DIR` | `uploads` |
+   | `MAX_UPLOAD_BYTES` | `10485760` |
 
-   | Key            | Value                                 |
-   | -------------- | ------------------------------------- |
-   | `DATABASE_URL` | `sqlite:////data/signal.db`           |
-   | `UPLOAD_DIR`   | `/data/uploads`                       |
-   | `OTP_CODE`     | `123456`                              |
-   | `CORS_ORIGINS` | Update after creating the Vercel site |
+   `PORT` is set by Render and must not be entered manually. Python is pinned to 3.11 by `backend/.python-version`.
 
-The Blueprint disk is mounted at `/data`, so the database and uploaded files remain on the persistent disk across deploys. The app creates tables and seeds demo data the first time that disk is empty.
+6. Wait for the deploy to finish. Select the `signal-clone-api` web service and copy its URL from the service header, for example `https://signal-clone-api.onrender.com`.
+7. Open `https://YOUR-RENDER-SERVICE.onrender.com/health`. A ready API returns `{"status":"ok"}`. Startup creates the schema and seed before the app begins accepting traffic.
 
-## 3. Create the frontend on Vercel
+## 2. Deploy the frontend on Vercel
 
-1. Sign in at [Vercel](https://vercel.com) and choose **Add New… → Project**.
-2. Import the same GitHub repository.
-3. In **Configure Project**, set **Root Directory** to `frontend` and confirm the Next.js framework is detected.
-4. Before deploying, expand **Environment Variables** and add:
+1. Sign in to [Vercel](https://vercel.com/dashboard) and choose **Add New… → Project**.
+2. Import the same repository and choose **Configure Project**.
+3. Open **Root Directory → Edit**, select `frontend`, and confirm. Verify that the Framework Preset is **Next.js**. `frontend/vercel.json` sets the `nextjs` framework preset; Vercel's root directory is a project setting, so it is selected here in the dashboard.
+4. Under **Environment Variables**, add the following values. Select **Production**; also select **Preview** and **Development** if those deployments should use the same backend.
 
-   | Name                  | Example value                                     |
-   | --------------------- | ------------------------------------------------- |
-   | `NEXT_PUBLIC_API_URL` | `https://YOUR-RENDER-SERVICE.onrender.com/api/v1` |
-   | `NEXT_PUBLIC_WS_URL`  | `wss://YOUR-RENDER-SERVICE.onrender.com/ws`       |
+   | Frontend variable | Example value |
+   |---|---|
+   | `NEXT_PUBLIC_API_URL` | `https://signal-clone-api.onrender.com/api/v1` |
+   | `NEXT_PUBLIC_WS_URL` | Leave unset to derive `wss://signal-clone-api.onrender.com/ws`; or set that exact URL explicitly |
 
-   Apply both variables to Production, Preview, and Development if you use all three environments. Keep `/api/v1` on the API URL and use `wss://` for the WebSocket URL.
+   Replace the example host with the URL copied from Render. Keep `/api/v1` on the API URL. The WebSocket URL is the service origin plus `/ws`, without `/api/v1`.
 
-5. Click **Deploy**. When it finishes, copy the production domain, for example `https://signal-clone.vercel.app`.
+5. Choose **Deploy**. When the deployment completes, copy the production domain shown on the deployment page, for example `https://signal-clone.vercel.app`.
 
-## 4. Allow the Vercel site through backend CORS
+## 3. Set the final CORS origin and redeploy the backend
 
 1. Return to Render and open the `signal-clone-api` service.
-2. Open **Environment → Edit**.
-3. Set `CORS_ORIGINS` to the exact Vercel origin, with no trailing slash. For example: `https://signal-clone.vercel.app`.
-4. If you want preview deploys to access the API, add their exact origins separated by commas. Avoid a wildcard for a credentialed API.
-5. Save the changes and let Render redeploy.
+2. Select **Environment → Edit**.
+3. Replace `CORS_ORIGINS` with the exact Vercel production origin, including `https://` and with no path or trailing slash. For example: `https://signal-clone.vercel.app`.
+4. If a Vercel preview domain also needs API access, add each exact origin as a comma-separated value. Do not use `*` for this credentialed API.
+5. Choose **Save, rebuild, and deploy** (or the equivalent save-and-redeploy action shown by Render). Wait for `/health` to return `{"status":"ok"}` again.
+6. Open the Vercel site, choose **Get started**, and sign in with `+91 90000 00001` or `+91 90000 00002`; the public demo code is `123456`. Open a second browser profile to try two-account messaging.
 
-## 5. Confirm both services
+## Environment variable reference
 
-1. Open the Vercel website and choose **Get started**.
-2. Sign in as `+91 90000 00001` with verification code `123456`. A second browser profile can sign in as `+91 90000 00002`.
-3. Send messages in both directions and confirm the WebSocket status ticks update.
-4. If the backend has been idle, its first request may take a short time to wake. Refresh once if the first request times out.
+| Service | Variable | Example / behavior |
+|---|---|---|
+| Render | `ENVIRONMENT` | `production`; enables production startup checks |
+| Render | `DATABASE_URL` | Free default `sqlite:///./signal.db`; paid disk `sqlite:////data/signal.db` |
+| Render | `CORS_ORIGINS` | Exact deployed frontend origin, such as `https://signal-clone.vercel.app` |
+| Render | `JWT_SECRET` | Unique random value, at least 32 characters; never commit it |
+| Render | `OTP_CODE` | `123456` for this public mock-OTP demo |
+| Render | `UPLOAD_DIR` | Free default `uploads`; paid disk `/data/uploads` |
+| Render | `MAX_UPLOAD_BYTES` | `10485760` (10 MiB) |
+| Render | `PORT` | Injected by Render; the start command binds to it |
+| Vercel | `NEXT_PUBLIC_API_URL` | API service URL ending in `/api/v1` |
+| Vercel | `NEXT_PUBLIC_WS_URL` | Optional; defaults from `NEXT_PUBLIC_API_URL` using `wss://` for HTTPS and `ws://` for HTTP |
 
-## Environment variables
+Render marks `CORS_ORIGINS`, `JWT_SECRET`, and `OTP_CODE` as unsynced values in the Blueprint. Enter them in Render's Environment page; only the origin and mock OTP examples above are public demo values. Generate a different `JWT_SECRET` for every deployment.
 
-Backend variables are `DATABASE_URL`, `CORS_ORIGINS`, `UPLOAD_DIR`, and `OTP_CODE`. Frontend build variables are `NEXT_PUBLIC_API_URL` and optionally `NEXT_PUBLIC_WS_URL`; when the latter is unset, the app derives `ws://` or `wss://` from the API origin. The example files under `backend/.env.example` and `frontend/.env.example` show local values.
+### Optional persistent disk
 
-The OTP is intentionally fixed and the messaging encryption is simulated. Do not use this assignment demo to store private production conversations.
+Render Free web services do not support persistent disks. To preserve local SQLite data and uploads, use a paid service plan, uncomment the `disk` block in `render.yaml`, set `DATABASE_URL=sqlite:////data/signal.db`, and set `UPLOAD_DIR=/data/uploads`. The disk mount path is `/data`; only files under that path persist.
+
+## Troubleshooting
+
+### CORS errors
+
+- In Render, check `CORS_ORIGINS` against the browser's exact Vercel origin. Include the scheme, omit a trailing slash and path, and separate multiple origins with commas.
+- Confirm the environment change finished deploying, then hard-refresh the Vercel page. A CORS error in the browser does not mean the backend health endpoint is down.
+- Keep the API URL ending in `/api/v1`; CORS uses only the frontend origin.
+
+### WebSocket does not connect
+
+- Use `wss://YOUR-RENDER-SERVICE.onrender.com/ws` for HTTPS, not an `/api/v1/ws` path. If `NEXT_PUBLIC_WS_URL` is unset, the frontend derives it from `NEXT_PUBLIC_API_URL`.
+- Check the browser Network panel for the `/ws` request and confirm the current Vercel deployment was rebuilt after changing public environment variables.
+- The realtime manager is in memory and this demo is intended to run as one backend instance.
+
+### Cold-start delay or first login error
+
+- The first request after a free service sleeps can take about a minute. The login flow displays **Waking up the server…** and retries network failures and 502/503/504 responses with backoff for up to about a minute.
+- Wait for the retry to finish instead of repeatedly submitting the form. If it still fails, open the Render service logs and confirm the deploy completed, `JWT_SECRET` is configured, and `/health` becomes ready.
+- `/health` checks database connectivity. Startup creates tables and reseeds an empty database before the service can pass its health check.
+
+### Upload or missing-data behavior
+
+- Uploads larger than `MAX_UPLOAD_BYTES` (10 MiB by default) are rejected.
+- On Render Free, uploaded files and local SQLite data reset when the instance sleeps, restarts, or redeploys. The seeded demo accounts and sample conversations return after an empty database starts; user-created content does not persist.
